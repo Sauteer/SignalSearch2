@@ -140,14 +140,14 @@ export default function HomePage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen w-full flex flex-col bg-background bg-grid relative text-foreground overflow-hidden">
+      <div className={cn("min-h-screen w-full flex flex-col bg-background bg-grid relative text-foreground", hasSearched ? "overflow-hidden" : "overflow-x-hidden overflow-y-auto custom-scrollbar")}>
         <div className="absolute inset-0 bg-radial-glow pointer-events-none" />
 
         <div className="absolute top-6 right-6 z-50">
           <UserMenu />
         </div>
 
-        <div className="relative z-10 flex flex-col h-screen">
+        <div className={cn("relative z-10 flex flex-col", hasSearched ? "h-screen" : "min-h-[100vh]")}>
           {/* Header */}
           <header className={cn("pt-6 pb-4 px-6 transition-opacity duration-500", hasSearched ? "opacity-100" : "opacity-0 invisible h-0 overflow-hidden")}>
             <div className="flex items-center gap-2 justify-center">
@@ -161,8 +161,8 @@ export default function HomePage() {
           {/* Search Area */}
           <div
             className={cn(
-              "transition-all duration-700 ease-out w-full max-w-4xl mx-auto px-4 flex flex-col z-40",
-              hasSearched ? "pt-4 pb-6" : "pt-[18vh] pb-12"
+              "transition-all duration-700 ease-out w-full mx-auto px-4 flex flex-col z-40",
+              hasSearched ? "pt-4 pb-6 max-w-4xl" : "pt-[18vh] pb-12 max-w-6xl"
             )}
           >
             <div className={cn("text-center mb-8 transition-all duration-500", hasSearched && "hidden md:opacity-0 md:h-0 overflow-hidden mb-0")}>
@@ -179,7 +179,7 @@ export default function HomePage() {
               <div className="mt-5 flex justify-center w-full">
                 <SourceFilter filters={filters} onFilterChange={setFilters} />
               </div>
-              <div className={cn("mt-4 text-xs text-muted-foreground transition-all duration-500 max-w-3xl mx-auto",
+              <div className={cn("mt-4 text-xs text-muted-foreground transition-all duration-500 w-full mx-auto",
                 hasSearched ? "hidden" : "opacity-60 hover:opacity-100"
               )}>
                 <AdvancedFilters
