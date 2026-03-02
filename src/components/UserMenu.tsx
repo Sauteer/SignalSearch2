@@ -28,6 +28,7 @@ export function UserMenu() {
     const [password, setPassword] = React.useState("")
     const [authLoading, setAuthLoading] = React.useState(false)
     const [authError, setAuthError] = React.useState<string | null>(null)
+    const [authSuccess, setAuthSuccess] = React.useState<string | null>(null)
 
     // Profile data
     const [profile, setProfile] = React.useState<any>({})
@@ -86,15 +87,22 @@ export function UserMenu() {
     const handleSignUp = async () => {
         setAuthLoading(true)
         setAuthError(null)
-        const { error } = await supabase.auth.signUp({ email, password })
-        if (error) setAuthError(error.message)
-        else setOpenAuth(false)
+        setAuthSuccess(null)
+        const { data, error } = await supabase.auth.signUp({ email, password })
+        if (error) {
+            setAuthError(error.message)
+        } else if (data.user && !data.session) {
+            setAuthSuccess("Account created successfully. Please check your email to confirm your account.")
+        } else {
+            setOpenAuth(false)
+        }
         setAuthLoading(false)
     }
 
     const handleLogin = async () => {
         setAuthLoading(true)
         setAuthError(null)
+        setAuthSuccess(null)
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) setAuthError(error.message)
         else setOpenAuth(false)
@@ -157,6 +165,7 @@ export function UserMenu() {
                             />
                         </div>
                         {authError && <p className="text-red-500 text-xs">{authError}</p>}
+                        {authSuccess && <p className="text-primary text-xs font-medium">{authSuccess}</p>}
                         <div className="flex gap-2">
                             <Button className="flex-1" onClick={handleLogin} disabled={authLoading}>
                                 {authLoading ? "Logging in..." : "Login"}

@@ -50,18 +50,9 @@ export function SourceFilter({ filters, onFilterChange }: SourceFilterProps) {
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border",
                 active
-                  ? `bg-${colorName}/15 text-foreground glow-primary`
+                  ? "bg-primary/15 text-foreground border-primary/50 shadow-[0_0_12px_rgba(20,184,166,0.2)]"
                   : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground"
               )}
-              style={
-                active
-                  ? {
-                    backgroundColor: `hsl(var(--${source.colorClass}) / 0.12)`,
-                    borderColor: `hsl(var(--${source.colorClass}) / 0.5)`,
-                    boxShadow: `0 0 12px hsl(var(--${source.colorClass}) / 0.2)`,
-                  }
-                  : undefined
-              }
             >
               <Icon className="w-4 h-4" />
               {source.label}

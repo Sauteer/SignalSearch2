@@ -114,7 +114,7 @@ export default function HomePage() {
                     setResults(data.data)
                     break
                   case "synthesis":
-                    setSynthesis((prev) => prev + data.data)
+                    setSynthesis((prev) => prev + data.data.replace(/\\n/g, '\n'))
                     break
                   case "complete":
                     setIsLoading(false)

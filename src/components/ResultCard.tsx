@@ -37,6 +37,7 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
     const targetWords = highlight?.trim()
     if (!targetWords) return <>{text}</>
 
+    // Extract alphanumeric words over 2 chars
     const words = targetWords
       .split(/\s+/)
       .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
@@ -44,21 +45,22 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
 
     if (words.length === 0) return <>{text}</>
 
-    const regex = new RegExp(`(${words.join('|')})`, 'gi')
+    // Match these exact words on boundaries (\b), ignoring case
+    const regex = new RegExp(`\\b(${words.join('|')})\\b`, 'gi')
     const parts = text.split(regex)
 
     return (
       <>
         {parts.map((part, i) => {
-          const isMatch = words.some(w => w.toLowerCase() === part.toLowerCase())
-          if (isMatch) {
+          // Because regex has capture groups, every odd-indexed part in `split` is the captured match itself
+          if (i % 2 !== 0) {
             return (
               <mark key={i} className="bg-primary/20 text-primary rounded px-0.5 font-bold">
                 {part}
               </mark>
             )
           }
-          return part
+          return <React.Fragment key={i}>{part}</React.Fragment>
         })}
       </>
     )

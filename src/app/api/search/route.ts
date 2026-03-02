@@ -181,6 +181,8 @@ export async function POST(request: NextRequest) {
             openRouterApiKey,
             finalSynthesisConfig
           )) {
+            // Replace newlines within the chunk so it doesn't break the SSE format
+            const safeChunk = chunk.replace(/\n/g, '\\n');
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ type: "synthesis", data: chunk })}\n\n`)
             );
@@ -190,11 +192,7 @@ export async function POST(request: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({ type: "complete" })}\n\n`)
           );
         } catch (synthesisError) {
-          console.error("DETAILED Synthesis error:", {
-            message: synthesisError instanceof Error ? synthesisError.message : String(synthesisError),
-            stack: synthesisError instanceof Error ? synthesisError.stack : undefined,
-            config: finalSynthesisConfig
-          });
+          console.error("DETAILED Synthesis error:", synthesisError);
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
