@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const allResults: SearchResult[] = [];
     for (const result of results) {
       if (result.status === "fulfilled" && Array.isArray(result.value)) {
-        const items = result.value.map((item) => 
+        const items = result.value.map((item) =>
           'relevanceScore' in item ? item : toSearchResult(item)
         );
         allResults.push(...items);
@@ -115,61 +115,34 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Return streaming response for synthesis
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        // First, send the results as JSON
-        const resultsPayload = {
-          type: "results",
-          data: topResults,
-        };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(resultsPayload)}\n\n`));
+    // Collect full synthesis first (non-streaming, compatible with Netlify serverless)
+    let synthesis = "";
+    try {
+      for await (const chunk of synthesizeWithOpenRouterStream(
+        topResults,
+        query,
+        openRouterApiKey
+      )) {
+        synthesis += chunk;
+      }
+    } catch (synthesisError) {
+      console.error("Synthesis error:", synthesisError);
+      // Return results even if synthesis fails
+      return NextResponse.json({
+        results: topResults,
+        synthesis: "Synthesis failed. Showing raw results only.",
+        query,
+        timestamp: new Date(),
+        totalResults: uniqueResults.length,
+      });
+    }
 
-        // Then stream the synthesis
-        try {
-          for await (const chunk of synthesizeWithOpenRouterStream(
-            topResults,
-            query,
-            openRouterApiKey
-          )) {
-            const synthesisPayload = {
-              type: "synthesis",
-              data: chunk,
-            };
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify(synthesisPayload)}\n\n`)
-            );
-          }
-
-          // Send completion signal
-          const completePayload = {
-            type: "complete",
-            data: {
-              query,
-              timestamp: new Date(),
-              totalResults: uniqueResults.length,
-            },
-          };
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(completePayload)}\n\n`));
-          controller.close();
-        } catch (error) {
-          const errorPayload = {
-            type: "error",
-            data: error instanceof Error ? error.message : "Synthesis failed",
-          };
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorPayload)}\n\n`));
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
+    return NextResponse.json({
+      results: topResults,
+      synthesis,
+      query,
+      timestamp: new Date(),
+      totalResults: uniqueResults.length,
     });
   } catch (error) {
     console.error("Search API error:", error);
