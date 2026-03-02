@@ -140,7 +140,7 @@ export default function HomePage() {
 
   return (
     <TooltipProvider>
-      <div className={cn("min-h-screen w-full flex flex-col bg-background bg-grid relative text-foreground", hasSearched ? "overflow-hidden" : "overflow-x-hidden overflow-y-auto custom-scrollbar")}>
+      <div className={cn("w-full flex flex-col bg-background bg-grid relative text-foreground", hasSearched ? "h-screen overflow-hidden" : "h-[100dvh] overflow-x-hidden overflow-y-auto custom-scrollbar")}>
         <div className="absolute inset-0 bg-radial-glow pointer-events-none" />
 
         <div className="absolute top-6 right-6 z-50">
