@@ -11,14 +11,7 @@ interface ResultCardProps {
   result: SearchResult
   index: number
   className?: string
-}
-
-const sourceTypeColors = {
-  exa: "source-blogs",
-  hackernews: "source-hackernews",
-  reddit: "source-reddit",
-  youtube: "source-youtube",
-  social: "source-twitter",
+  searchQuery?: string
 }
 
 const SourceIcons = {
@@ -29,7 +22,7 @@ const SourceIcons = {
   social: Twitter,
 }
 
-export function ResultCard({ result, index, className }: ResultCardProps) {
+export function ResultCard({ result, index, className, searchQuery }: ResultCardProps) {
   const [expanded, setExpanded] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
   const [isSaved, setIsSaved] = React.useState(false)
@@ -38,19 +31,35 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
   const supabase = React.useMemo(() => createClient(), [])
 
   const Icon = SourceIcons[result.sourceType] || Globe
-  const colorClass = sourceTypeColors[result.sourceType]
 
   const highlightSnippet = (text: string, highlight?: string) => {
-    if (!highlight) return text
-    const idx = text.toLowerCase().indexOf(highlight.toLowerCase())
-    if (idx === -1) return text
+    if (!text) return ""
+    const targetWords = highlight?.trim()
+    if (!targetWords) return <>{text}</>
+
+    const words = targetWords
+      .split(/\s+/)
+      .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
+      .filter(w => w.length > 2)
+
+    if (words.length === 0) return <>{text}</>
+
+    const regex = new RegExp(`(${words.join('|')})`, 'gi')
+    const parts = text.split(regex)
+
     return (
       <>
-        {text.slice(0, idx)}
-        <mark className="bg-primary/20 text-primary rounded px-0.5">
-          {text.slice(idx, idx + highlight.length)}
-        </mark>
-        {text.slice(idx + highlight.length)}
+        {parts.map((part, i) => {
+          const isMatch = words.some(w => w.toLowerCase() === part.toLowerCase())
+          if (isMatch) {
+            return (
+              <mark key={i} className="bg-primary/20 text-primary rounded px-0.5 font-bold">
+                {part}
+              </mark>
+            )
+          }
+          return part
+        })}
       </>
     )
   }
@@ -93,8 +102,7 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <Icon
-                className="w-4 h-4 flex-shrink-0"
-                style={{ color: `hsl(var(--${colorClass}))` }}
+                className="w-4 h-4 flex-shrink-0 text-primary"
               />
               <span className="text-xs font-mono text-muted-foreground truncate max-w-[150px]">
                 {result.source}
@@ -128,7 +136,7 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
             </h3>
 
             <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-              {highlightSnippet(result.snippet, result.title)}
+              {highlightSnippet(result.snippet, searchQuery || result.title)}
             </p>
           </div>
         </div>
@@ -143,7 +151,7 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
           </button>
 
           {result.sourceType === "youtube" && (
-            <span className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[#FF0000] bg-[#FF0000]/10 px-2.5 py-1.5 rounded-lg border border-[#FF0000]/20 ml-2">
+            <span className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1.5 rounded-lg border border-primary/20 ml-2">
               <Youtube className="w-3.5 h-3.5" />
               Inside Transcript
             </span>
@@ -162,7 +170,7 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
           {(result.engagement > 0 || result.points) && (
             <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground bg-muted/50 px-2 py-1.5 rounded-lg border border-border/50">
               {result.sourceType === "social" ? (
-                <Heart className="w-3 h-3 text-red-400" />
+                <Heart className="w-3 h-3 text-primary" />
               ) : (
                 <TrendingUp className="w-3 h-3 text-primary" />
               )}
@@ -177,7 +185,7 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
           <div className="mt-4 pt-4 border-t border-border/50 animate-fade-in bg-muted/10 -mx-5 -mb-5 p-5 rounded-b-xl overflow-hidden">
             <h4 className="text-sm font-bold text-foreground mb-2">Extended Context</h4>
             <div className="text-sm text-secondary-foreground leading-relaxed font-mono whitespace-pre-wrap max-h-[400px] overflow-y-auto custom-scrollbar pr-3">
-              {result.rawContent ? highlightSnippet(result.rawContent, result.title) : highlightSnippet(result.snippet, result.title)}
+              {result.rawContent ? highlightSnippet(result.rawContent, searchQuery || result.title) : highlightSnippet(result.snippet, searchQuery || result.title)}
             </div>
           </div>
         )}

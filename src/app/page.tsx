@@ -269,7 +269,7 @@ export default function HomePage() {
                         </div>
                       ) : (
                         results.map((result, index) => (
-                          <ResultCard key={result.id} result={result} index={index} />
+                          <ResultCard key={result.id} result={result} index={index} searchQuery={currentKeywords || currentIntention} />
                         ))
                       )}
                     </div>
