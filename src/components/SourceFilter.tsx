@@ -2,8 +2,7 @@
 
 import * as React from "react"
 import { Globe, MessageSquare, Newspaper, Youtube, Twitter } from "lucide-react"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { SEARCH_SOURCES } from "@/config/sources.config"
 import { cn } from "@/lib/utils"
 
@@ -21,86 +20,73 @@ interface SourceFilterProps {
 }
 
 const sources = [
-  { id: "exa" as const, label: "Blogs", icon: Globe },
-  { id: "hackerNews" as const, label: "HN", icon: Newspaper },
-  { id: "reddit" as const, label: "Reddit", icon: MessageSquare },
-  { id: "youtube" as const, label: "YouTube", icon: Youtube },
-  { id: "social" as const, label: "X/Twitter", icon: Twitter },
+  { id: "youtube" as const, label: "YouTube", icon: Youtube, colorClass: "source-youtube" },
+  { id: "exa" as const, label: "Blogs", icon: Globe, colorClass: "source-blogs" },
+  { id: "reddit" as const, label: "Reddit", icon: MessageSquare, colorClass: "source-reddit" },
+  { id: "social" as const, label: "X/Twitter", icon: Twitter, colorClass: "source-twitter" },
+  { id: "hackerNews" as const, label: "HN", icon: Newspaper, colorClass: "source-hackernews" },
 ] as const
 
 export function SourceFilter({ filters, onFilterChange }: SourceFilterProps) {
-  const activeSources = sources
-    .filter(({ id }) => filters[id])
-    .map(({ id }) => id)
-
-  const handleValueChange = (value: string[]) => {
-    const newFilters: SourceFilters = {
-      exa: false,
-      hackerNews: false,
-      reddit: false,
-      youtube: false,
-      social: false,
-    }
-
-    value.forEach((id) => {
-      if (id in newFilters) {
-        newFilters[id as keyof SourceFilters] = true
-      }
+  const onToggle = (id: keyof SourceFilters) => {
+    onFilterChange({
+      ...filters,
+      [id]: !filters[id]
     })
-
-    onFilterChange(newFilters)
   }
 
   return (
-    <div className="p-1 rounded-full bg-muted/20 border border-border/30 backdrop-blur-sm shadow-sm inline-flex">
-      <ToggleGroup
-        type="multiple"
-        value={activeSources}
-        onValueChange={handleValueChange}
-        className="flex flex-wrap gap-1"
-      >
-        {sources.map(({ id, label, icon: Icon }) => {
-          const content = (
-            <ToggleGroupItem
-              key={id}
-              value={id}
-              variant="outline"
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-lg border border-border",
-                filters[id]
-                  ? id === "youtube"
-                    ? "bg-[#FF0000] text-white border-[#FF0000]"
-                    : "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-muted-foreground hover:bg-muted/30 border-transparent",
-                "focus-visible:ring-ring focus-visible:ring-2 outline-none"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              <span className="text-sm">{label}</span>
-            </ToggleGroupItem>
-          );
+    <div className="flex flex-wrap gap-2 justify-center">
+      <TooltipProvider>
+        {sources.map((source) => {
+          const Icon = source.icon
+          const active = filters[source.id]
+          const colorName = source.colorClass.replace("source-", "")
 
-          if (id === "youtube") {
+          const buttonContent = (
+            <button
+              key={source.id}
+              onClick={() => onToggle(source.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border",
+                active
+                  ? `bg-${colorName}/15 text-foreground glow-primary`
+                  : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground"
+              )}
+              style={
+                active
+                  ? {
+                    backgroundColor: `hsl(var(--${source.colorClass}) / 0.12)`,
+                    borderColor: `hsl(var(--${source.colorClass}) / 0.5)`,
+                    boxShadow: `0 0 12px hsl(var(--${source.colorClass}) / 0.2)`,
+                  }
+                  : undefined
+              }
+            >
+              <Icon className="w-4 h-4" />
+              {source.label}
+            </button>
+          )
+
+          if (source.id === "youtube") {
             return (
-              <Tooltip key={id}>
-                <TooltipTrigger asChild>
-                  {content}
-                </TooltipTrigger>
+              <Tooltip key={source.id}>
+                <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs text-xs p-3">
                   <p className="font-semibold mb-1">Included Channels:</p>
                   <ul className="list-disc list-inside opacity-80">
-                    {SEARCH_SOURCES.youtubeChannels.map(c => (
+                    {SEARCH_SOURCES.youtubeChannels.map((c) => (
                       <li key={c.id}>{c.name}</li>
                     ))}
                   </ul>
                 </TooltipContent>
               </Tooltip>
-            );
+            )
           }
 
-          return content;
+          return <React.Fragment key={source.id}>{buttonContent}</React.Fragment>
         })}
-      </ToggleGroup>
+      </TooltipProvider>
     </div>
   )
 }

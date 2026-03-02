@@ -12,12 +12,19 @@ interface SearchBarProps {
 
 export function SearchBar({ onSearch, isLoading, className }: SearchBarProps) {
   const [query, setQuery] = React.useState("")
+  const [focused, setFocused] = React.useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     if (query.trim() && !isLoading) {
-      // Pass the entire query as intention. Features like synonyms or exact match can still be applied server-side.
       onSearch(query.trim(), "")
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      handleSubmit()
     }
   }
 
@@ -34,28 +41,43 @@ export function SearchBar({ onSearch, isLoading, className }: SearchBarProps) {
   }, [])
 
   return (
-    <form onSubmit={handleSubmit} className={cn("w-full relative z-50", className)}>
-      <div className="relative group/search flex items-center">
-        <Search className="absolute left-6 h-6 w-6 text-muted-foreground/50 transition-colors group-focus-within/search:text-primary" />
+    <div
+      className={cn(
+        "relative w-full max-w-3xl mx-auto transition-all duration-500 rounded-2xl",
+        focused ? "glow-primary-strong" : "glow-primary",
+        className
+      )}
+    >
+      <div className="relative flex items-center bg-card border border-border rounded-2xl overflow-hidden">
+        <Search className="absolute left-5 w-5 h-5 text-primary" />
         <input
           id="main-search-input"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Ask SignalSearch... (⌘K)"
-          className="w-full h-16 pl-16 pr-12 rounded-2xl bg-muted/10 backdrop-blur-md border border-border/50 text-foreground text-[1.1rem] tracking-tight shadow-sm focus:bg-background focus:border-primary/40 focus:ring-4 focus:ring-primary/10 focus:shadow-xl transition-all outline-none placeholder:text-muted-foreground/40"
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={handleKeyDown}
+          placeholder="Search across intelligence sources... (⌘K)"
+          className="w-full bg-transparent py-4 pl-14 pr-28 text-foreground placeholder:text-muted-foreground font-mono text-sm focus:outline-none"
           disabled={isLoading}
           autoComplete="off"
           autoFocus
         />
+
         {isLoading ? (
-          <Loader2 className="absolute right-6 h-5 w-5 animate-spin text-primary" />
-        ) : (
-          <div className="absolute right-5 h-7 px-2.5 flex items-center justify-center rounded-lg border border-border/40 bg-muted/20 text-xs font-mono font-medium text-muted-foreground/60 pointer-events-none opacity-0 group-focus-within/search:opacity-100 transition-opacity">
-            ↵
+          <div className="absolute right-5 px-5 py-2 flex items-center justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </div>
+        ) : (
+          <button
+            onClick={() => handleSubmit()}
+            className="absolute right-2 px-5 py-2 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+          >
+            Search
+          </button>
         )}
       </div>
-    </form>
+    </div>
   )
 }

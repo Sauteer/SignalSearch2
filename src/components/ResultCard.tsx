@@ -1,16 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { ExternalLink, Clock, TrendingUp, ChevronDown, ChevronUp, Heart, Globe, Newspaper, MessageSquare, Youtube, Twitter, Bookmark } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { ExternalLink, TrendingUp, Heart, Globe, Newspaper, MessageSquare, Youtube, Twitter, Bookmark, Expand, X } from "lucide-react"
 import { SearchResult } from "@/lib/types"
-import { getRecencyLabel } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/providers/AuthProvider"
 import { createClient } from "@/lib/supabase-client"
-import { Button } from "@/components/ui/button"
 
 interface ResultCardProps {
   result: SearchResult
@@ -19,11 +14,11 @@ interface ResultCardProps {
 }
 
 const sourceTypeColors = {
-  exa: "text-blue-400 bg-blue-500/10",
-  hackernews: "text-orange-400 bg-orange-500/10",
-  reddit: "text-purple-400 bg-purple-500/10",
-  youtube: "text-red-400 bg-red-500/10",
-  social: "text-sky-400 bg-sky-500/10",
+  exa: "source-blogs",
+  hackernews: "source-hackernews",
+  reddit: "source-reddit",
+  youtube: "source-youtube",
+  social: "source-twitter",
 }
 
 const SourceIcons = {
@@ -34,23 +29,31 @@ const SourceIcons = {
   social: Twitter,
 }
 
-const sourceTypeLabels = {
-  exa: "Blog",
-  hackernews: "HN",
-  reddit: "Reddit",
-  youtube: "YouTube",
-  social: "X",
-}
-
 export function ResultCard({ result, index, className }: ResultCardProps) {
-  const [isExpanded, setIsExpanded] = React.useState(false)
+  const [expanded, setExpanded] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
   const [isSaved, setIsSaved] = React.useState(false)
   const { user } = useAuth()
-  const supabase = createClient()
+  // Wait to initialize supabase so it does not crash on render during dev
+  const supabase = React.useMemo(() => createClient(), [])
 
-  const recencyLabel = getRecencyLabel(result.publishedAt)
-  const Icon = SourceIcons[result.sourceType]
+  const Icon = SourceIcons[result.sourceType] || Globe
+  const colorClass = sourceTypeColors[result.sourceType]
+
+  const highlightSnippet = (text: string, highlight?: string) => {
+    if (!highlight) return text
+    const idx = text.toLowerCase().indexOf(highlight.toLowerCase())
+    if (idx === -1) return text
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className="bg-primary/20 text-primary rounded px-0.5">
+          {text.slice(idx, idx + highlight.length)}
+        </mark>
+        {text.slice(idx + highlight.length)}
+      </>
+    )
+  }
 
   const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -78,84 +81,78 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
   }
 
   return (
-    <Card className={cn("group transition-all duration-200 hover:-translate-y-[2px] hover:border-primary/60 border-border bg-card shadow-none hover:shadow-lg hover:shadow-primary/5", className)}>
-      <CardContent className="p-5 flex flex-col gap-3">
-        {/* Top Header: Source Icon & Title */}
-        <div className="flex items-start gap-4">
-          <div className={cn("flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border border-border/50", sourceTypeColors[result.sourceType])}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0 pt-0.5">
-            <div className="flex items-start justify-between gap-2">
-              <a
-                href={result.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[0.95rem] leading-tight font-semibold text-foreground hover:text-primary transition-colors line-clamp-2"
-              >
-                {result.title}
-              </a>
-              {user && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-8 w-8 -mt-1 -mr-2 shrink-0 transition-colors",
-                    isSaved ? "text-primary" : "text-muted-foreground hover:text-primary"
-                  )}
-                  onClick={handleSave}
-                  disabled={isSaving || isSaved}
-                >
-                  <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
-                </Button>
-              )}
+    <>
+      <div
+        className={cn(
+          "group bg-card border border-border rounded-xl p-5 hover:border-primary/30 transition-all duration-300 animate-slide-up relative",
+          className
+        )}
+        style={{ animationDelay: `${index * 60}ms` }}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon
+                className="w-4 h-4 flex-shrink-0"
+                style={{ color: `hsl(var(--${colorClass}))` }}
+              />
+              <span className="text-xs font-mono text-muted-foreground truncate max-w-[150px]">
+                {result.source}
+              </span>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">
+                {result.publishedAt ? new Date(result.publishedAt).toLocaleDateString() : "Recent"}
+              </span>
+              <div className="flex items-center gap-1 ml-auto">
+                <TrendingUp className="w-3 h-3 text-primary" />
+                <span className="text-xs font-mono text-primary">
+                  {(result.finalScore * 100).toFixed(0)}%
+                </span>
+                {user && (
+                  <button
+                    className={cn(
+                      "ml-2 -mt-1 -mr-2 p-1 rounded-md transition-colors",
+                      isSaved ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-secondary hover:text-primary"
+                    )}
+                    onClick={handleSave}
+                    disabled={isSaving || isSaved}
+                  >
+                    <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground mt-1 truncate max-w-[80%]">
-              {result.source}
-            </div>
+
+            <h3 className="text-sm font-semibold text-foreground mb-2 line-clamp-1 group-hover:text-primary transition-colors pr-8">
+              {result.title}
+            </h3>
+
+            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+              {highlightSnippet(result.snippet, result.title)}
+            </p>
           </div>
         </div>
 
-        {/* Snippet / Expanded Content */}
-        {result.snippet && (
-          <div className="mt-1">
-            <p className={cn(
-              "text-sm text-foreground/80 leading-relaxed font-mono tracking-tight",
-              !isExpanded && "line-clamp-2"
-            )}>
-              {isExpanded && result.rawContent ? result.rawContent : result.snippet}
-            </p>
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+          <button
+            onClick={() => setExpanded(true)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-secondary"
+          >
+            <Expand className="w-3 h-3" />
+            Preview
+          </button>
+          <a
+            href={result.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-secondary"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Visit
+          </a>
 
-            {(result.rawContent || result.snippet.length > 150) && (
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-1.5 mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors"
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                    Hide Transcript
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                    Show Transcript
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Bottom Metadata Badges */}
-        <div className="flex items-center gap-2 mt-2 pt-3 border-t border-border/50 overflow-x-auto custom-scrollbar pb-1">
-          <Badge variant="secondary" className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 font-mono text-[10px] text-muted-foreground bg-muted/50 border-transparent">
-            <Clock className="w-3 h-3" />
-            {recencyLabel}
-          </Badge>
-
-          {result.engagement > 0 && (
-            <Badge variant="secondary" className="flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 font-mono text-[10px] text-muted-foreground bg-muted/50 border-transparent">
+          {(result.engagement > 0 || result.points) && (
+            <div className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
               {result.sourceType === "social" ? (
                 <Heart className="w-3 h-3" />
               ) : (
@@ -163,14 +160,86 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
               )}
               {result.points ?? result.engagement}
               {result.comments && ` · ${result.comments} c`}
-            </Badge>
+            </div>
           )}
-
-          <Badge variant="outline" className="ml-auto whitespace-nowrap rounded-md px-2 py-0.5 font-mono text-[10px] font-bold text-primary border-primary/30 bg-primary/5">
-            {(result.finalScore * 100).toFixed(0)}/100
-          </Badge>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Expanded preview overlay */}
+      {expanded && (
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+          onClick={() => setExpanded(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-2xl p-8 max-w-2xl w-full max-h-[80vh] overflow-auto glow-primary relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Icon
+                  className="w-5 h-5"
+                  style={{ color: `hsl(var(--${colorClass}))` }}
+                />
+                <span className="text-sm font-mono text-muted-foreground">
+                  {result.source}
+                </span>
+              </div>
+              <button
+                onClick={() => setExpanded(false)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-secondary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <h2 className="text-lg font-semibold text-foreground mb-3 pr-8">
+              {result.title}
+            </h2>
+
+            <div className="text-sm text-secondary-foreground leading-relaxed mb-4 font-mono">
+              {result.rawContent ? highlightSnippet(result.rawContent, result.title) : highlightSnippet(result.snippet, result.title)}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {result.publishedAt ? new Date(result.publishedAt).toLocaleString() : "Recent"}
+              </span>
+              <div className="flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-primary" />
+                <span className="text-xs font-mono text-primary">
+                  {(result.finalScore * 100).toFixed(0)}% relevance
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <a
+                href={result.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Visit Source
+              </a>
+              {user && (
+                <button
+                  className={cn(
+                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors border",
+                    isSaved ? "bg-primary/10 text-primary border-primary/20" : "bg-card text-foreground hover:bg-secondary border-border"
+                  )}
+                  onClick={handleSave}
+                  disabled={isSaving || isSaved}
+                >
+                  <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
+                  {isSaved ? "Saved" : "Save"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
