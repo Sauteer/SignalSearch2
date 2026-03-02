@@ -42,22 +42,27 @@ export async function searchHackerNews(
     }
 
     return data.hits
-      .filter((hit: HNSearchResult) => hit.title && hit.url)
-      .map((hit: HNSearchResult, index: number) => ({
-        id: `hn-${hit.objectID}`,
-        title: hit.title,
-        url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
-        snippet: hit.story_text?.slice(0, 300) || "",
-        source: "Hacker News",
-        sourceType: "hackernews" as const,
-        publishedAt: hit.created_at ? new Date(hit.created_at) : null,
-        engagement: hit.points + hit.num_comments * 2,
-        relevanceScore: Math.min(hit.points / 500, 1),
-        finalScore: 0,
-        author: hit.author,
-        points: hit.points,
-        comments: hit.num_comments,
-      }));
+      .filter((hit: HNSearchResult) => hit.title && (hit.url || hit.objectID))
+      .map((hit: HNSearchResult) => {
+        const snippetText = hit.story_text
+          ? hit.story_text.replace(/<[^>]+>/g, '').slice(0, 400)
+          : `Hacker News discussion with ${hit.points ?? 0} points and ${hit.num_comments ?? 0} comments. Posted by ${hit.author}.`;
+        return {
+          id: `hn-${hit.objectID}`,
+          title: hit.title,
+          url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
+          snippet: snippetText,
+          source: "Hacker News",
+          sourceType: "hackernews" as const,
+          publishedAt: hit.created_at ? new Date(hit.created_at) : null,
+          engagement: (hit.points ?? 0) + (hit.num_comments ?? 0) * 2,
+          relevanceScore: Math.min((hit.points ?? 0) / 300, 1),
+          finalScore: 0,
+          author: hit.author,
+          points: hit.points,
+          comments: hit.num_comments,
+        };
+      });
   } catch (error) {
     console.error("Hacker News search error:", error);
     return [];
@@ -102,22 +107,27 @@ export async function searchHackerNewsByDate(
     }
 
     return data.hits
-      .filter((hit: HNSearchResult) => hit.title && hit.url)
-      .map((hit: HNSearchResult, index: number) => ({
-        id: `hn-${hit.objectID}`,
-        title: hit.title,
-        url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
-        snippet: hit.story_text?.slice(0, 300) || "",
-        source: "Hacker News",
-        sourceType: "hackernews" as const,
-        publishedAt: hit.created_at ? new Date(hit.created_at) : null,
-        engagement: hit.points + hit.num_comments * 2,
-        relevanceScore: Math.min(hit.points / 500, 1),
-        finalScore: 0,
-        author: hit.author,
-        points: hit.points,
-        comments: hit.num_comments,
-      }));
+      .filter((hit: HNSearchResult) => hit.title && (hit.url || hit.objectID))
+      .map((hit: HNSearchResult) => {
+        const snippetText = hit.story_text
+          ? hit.story_text.replace(/<[^>]+>/g, '').slice(0, 400)
+          : `Hacker News discussion with ${hit.points ?? 0} points and ${hit.num_comments ?? 0} comments. Posted by ${hit.author}.`;
+        return {
+          id: `hn-${hit.objectID}`,
+          title: hit.title,
+          url: hit.url || `https://news.ycombinator.com/item?id=${hit.objectID}`,
+          snippet: snippetText,
+          source: "Hacker News",
+          sourceType: "hackernews" as const,
+          publishedAt: hit.created_at ? new Date(hit.created_at) : null,
+          engagement: (hit.points ?? 0) + (hit.num_comments ?? 0) * 2,
+          relevanceScore: Math.min((hit.points ?? 0) / 300, 1),
+          finalScore: 0,
+          author: hit.author,
+          points: hit.points,
+          comments: hit.num_comments,
+        };
+      });
   } catch (error) {
     console.error("Hacker News search error:", error);
     return [];

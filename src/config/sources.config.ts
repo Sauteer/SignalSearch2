@@ -30,7 +30,7 @@ export const SEARCH_SOURCES = {
     { id: "UCL5EUbZTHLoE1vlwUmcJf7g", name: "Two Minute Papers" },
   ],
   hackerNews: {
-    minPoints: 50,
+    minPoints: 10,
     maxAgeDays: 90,
   },
 } as const;
@@ -68,13 +68,13 @@ export const SOURCE_HANDLERS: Record<SourceHandler, SourceConfig> = {
 
 // Scoring weights
 export const SCORING_WEIGHTS = {
-  relevance: 0.4, // W_rel
-  recency: 0.4, // W_rec (high for AI news)
-  engagement: 0.2, // W_eng
+  relevance: 0.6, // W_rel — query relevance is the primary signal
+  recency: 0.25, // W_rec
+  engagement: 0.15, // W_eng
 } as const;
 
-// Recency decay lambda (higher = faster decay)
-export const RECENCY_DECAY_LAMBDA = 0.01; // per hour
+// Recency decay lambda (lower = slower decay so old relevant content still surfaces)
+export const RECENCY_DECAY_LAMBDA = 0.003; // per hour
 
 // Social-specific scoring adjustments
 export const SOCIAL_SCORING = {

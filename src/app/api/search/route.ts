@@ -152,19 +152,10 @@ export async function POST(request: NextRequest) {
 
     // Sort by custom scoring algorithm
     const scoredResults = sortByScore(uniqueResults);
-    const topResults = scoredResults.slice(0, maxResults);
+    // Take more results upfront (2x) to allow for relevance sorting, then cut down
+    const topResults = scoredResults.slice(0, maxResults * 2).slice(0, maxResults);
 
-    // If no OpenRouter API key, OR if synthesis is explicitly disabled by user config, return results
-    if (!openRouterApiKey || finalSynthesisConfig.enabled === false) {
-      return NextResponse.json({
-        results: topResults,
-        synthesis: "AI synthesis disabled.",
-        query: fallbackQuery,
-        timestamp: new Date(),
-        totalResults: uniqueResults.length,
-      });
-    }
-
+    // Always use SSE streaming for consistent frontend handling
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -173,16 +164,25 @@ export async function POST(request: NextRequest) {
           encoder.encode(`data: ${JSON.stringify({ type: "results", data: topResults })}\n\n`)
         );
 
+        // If no API key or synthesis disabled, just complete without synthesis
+        if (!openRouterApiKey || finalSynthesisConfig.enabled === false) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: "complete" })}\n\n`)
+          );
+          controller.close();
+          return;
+        }
+
         try {
           console.log(`Starting synthesis with model: ${finalSynthesisConfig.model}, query: ${fallbackQuery}`);
           for await (const chunk of synthesizeWithOpenRouterStream(
             topResults,
             fallbackQuery,
             openRouterApiKey,
-            finalSynthesisConfig
+            finalSynthesisConfig,
+            finalSynthesisConfig.model
           )) {
-            // Replace newlines within the chunk so it doesn't break the SSE format
-            const safeChunk = chunk.replace(/\n/g, '\\n');
+            // JSON.stringify handles newline escaping automatically for SSE
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ type: "synthesis", data: chunk })}\n\n`)
             );
@@ -192,14 +192,17 @@ export async function POST(request: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({ type: "complete" })}\n\n`)
           );
         } catch (synthesisError) {
-          console.error("DETAILED Synthesis error:", synthesisError);
+          console.error("Synthesis error:", synthesisError);
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
-                type: "error",
-                data: `Synthesis failed: ${synthesisError instanceof Error ? synthesisError.message : "Unknown error"}. Showing raw results only.`
+                type: "synthesis",
+                data: `\n\n⚠️ Synthesis failed: ${synthesisError instanceof Error ? synthesisError.message : "Unknown error"}`
               })}\n\n`
             )
+          );
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: "complete" })}\n\n`)
           );
         } finally {
           controller.close();
