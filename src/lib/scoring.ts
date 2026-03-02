@@ -4,10 +4,11 @@ import { SCORING_WEIGHTS, RECENCY_DECAY_LAMBDA, SOCIAL_SCORING } from "@/config/
 /**
  * Calculate hours since publication
  */
-export function getHoursSincePublication(publishedAt: Date | null): number {
+export function getHoursSincePublication(publishedAt: Date | string | null): number {
   if (!publishedAt) return 24 * 365; // Default to 1 year if no date
   const now = new Date();
-  const diffMs = now.getTime() - publishedAt.getTime();
+  const pubDate = typeof publishedAt === 'string' ? new Date(publishedAt) : publishedAt;
+  const diffMs = now.getTime() - pubDate.getTime();
   return Math.max(0, diffMs / (1000 * 60 * 60));
 }
 
@@ -22,7 +23,7 @@ export function calculateRecencyScore(
   const lambda = isSocialSource
     ? RECENCY_DECAY_LAMBDA * SOCIAL_SCORING.recencyDecayMultiplier
     : RECENCY_DECAY_LAMBDA;
-  
+
   return Math.exp(-lambda * hoursSincePublication);
 }
 
@@ -35,11 +36,11 @@ export function calculateEngagementScore(
   isSocialSource: boolean = false
 ): number {
   const score = Math.log(engagement + 1);
-  
+
   if (isSocialSource) {
     return score * SOCIAL_SCORING.engagementBoostMultiplier;
   }
-  
+
   return score;
 }
 
@@ -60,29 +61,29 @@ export function calculateFinalScore(
   allResults: SearchResult[]
 ): number {
   const isSocialSource = result.sourceType === "social";
-  
+
   // Get hours since publication
   const hoursSincePub = getHoursSincePublication(result.publishedAt);
-  
+
   // Calculate individual scores
   const recencyScore = calculateRecencyScore(hoursSincePub, isSocialSource);
   const engagementScore = calculateEngagementScore(result.engagement, isSocialSource);
-  
+
   // Normalize relevance score (assume it's already 0-1 from API)
   const relevanceScore = result.relevanceScore;
-  
+
   // Normalize engagement across all results
   const engagements = allResults.map(r => calculateEngagementScore(r.engagement, r.sourceType === "social"));
   const minEngagement = Math.min(...engagements);
   const maxEngagement = Math.max(...engagements);
   const normalizedEngagement = normalizeScore(engagementScore, minEngagement, maxEngagement);
-  
+
   // Calculate weighted final score
   const finalScore =
     relevanceScore * SCORING_WEIGHTS.relevance +
     recencyScore * SCORING_WEIGHTS.recency +
     normalizedEngagement * SCORING_WEIGHTS.engagement;
-  
+
   return Math.round(finalScore * 1000) / 1000; // Round to 3 decimal places
 }
 
@@ -95,10 +96,10 @@ export function sortByScore(results: SearchResult[]): SearchResult[] {
     ...result,
     calculatedScore: calculateFinalScore(result, results)
   }));
-  
+
   // Sort by score descending
   resultsWithScores.sort((a, b) => b.calculatedScore - a.calculatedScore);
-  
+
   // Return with updated finalScore
   return resultsWithScores.map(({ calculatedScore, ...rest }) => ({
     ...rest,
@@ -109,11 +110,11 @@ export function sortByScore(results: SearchResult[]): SearchResult[] {
 /**
  * Get a human-readable recency label
  */
-export function getRecencyLabel(publishedAt: Date | null): string {
+export function getRecencyLabel(publishedAt: Date | string | null): string {
   if (!publishedAt) return "Unknown";
-  
+
   const hours = getHoursSincePublication(publishedAt);
-  
+
   if (hours < 1) return "Just now";
   if (hours < 24) return `${Math.floor(hours)}h ago`;
   if (hours < 48) return "Yesterday";

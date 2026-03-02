@@ -78,7 +78,7 @@ export default function HomePage() {
             if (trimmedLine.startsWith("data: ")) {
               try {
                 const data = JSON.parse(trimmedLine.slice(6))
-                
+
                 switch (data.type) {
                   case "results":
                     setResults(data.data)
@@ -191,7 +191,7 @@ export default function HomePage() {
         <footer className="border-t border-border mt-12">
           <div className="container max-w-7xl mx-auto px-4 py-6">
             <p className="text-xs text-muted-foreground text-center">
-              SignalSearch — Aggregating high-signal AI/ML sources with Claude-powered synthesis
+              SignalSearch v0.1.1 — Aggregating high-signal AI/ML sources with Claude-powered synthesis
             </p>
           </div>
         </footer>
