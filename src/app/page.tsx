@@ -44,7 +44,15 @@ export default function HomePage() {
       })
 
       if (!response.ok) {
-        throw new Error(`Search failed: ${response.statusText}`)
+        let errorMsg = `Search failed (${response.status})`
+        try {
+          const errData = await response.json()
+          errorMsg = errData.error || errorMsg
+        } catch {
+          // If we can't parse the error as JSON, use the status text
+          if (response.statusText) errorMsg = `Search failed: ${response.statusText}`
+        }
+        throw new Error(errorMsg)
       }
 
       // Check if response is a stream
