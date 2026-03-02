@@ -31,7 +31,7 @@ export default function HomePage() {
   const [specificSources, setSpecificSources] = React.useState<NonNullable<SearchQuery["specificSources"]>>({
     exaDomains: [...SEARCH_SOURCES.exaDomains],
     subreddits: [...SEARCH_SOURCES.subreddits],
-    youtubeChannels: [...SEARCH_SOURCES.youtubeChannels],
+    youtubeChannels: SEARCH_SOURCES.youtubeChannels.map((c) => c.id),
   })
 
   const [useSynonyms, setUseSynonyms] = React.useState(false)
@@ -176,14 +176,14 @@ export default function HomePage() {
               <p className="text-sm mt-2">Try "RAG improvements" or "LLM benchmarks"</p>
             </div>
           ) : (
-            <div className="flex-1 flex w-full h-full">
+            <div className="flex-1 flex flex-col lg:flex-row w-full h-full overflow-hidden">
               {/* Left Pane: The Synthesis (The "Brain") 60% */}
-              <div className="w-full lg:w-[60%] flex flex-col overflow-hidden border-r border-border p-6 h-full">
+              <div className="w-full lg:w-[60%] flex flex-col overflow-hidden border-b lg:border-b-0 lg:border-r border-border p-6 h-1/2 lg:h-full">
                 <SynthesisPanel synthesis={synthesis} isLoading={isLoading} />
               </div>
 
               {/* Right Pane: The Source Feed (The "Evidence") 40% */}
-              <div className="w-full lg:w-[40%] flex flex-col overflow-hidden bg-muted/5 h-full relative">
+              <div className="w-full lg:w-[40%] flex flex-col overflow-hidden bg-muted/5 h-1/2 lg:h-full relative">
                 <div className="absolute inset-0 p-6 overflow-y-auto custom-scrollbar">
                   <h2 className="text-sm font-medium text-muted-foreground mb-4 sticky top-0 bg-background/80 backdrop-blur pb-2 z-10 flex items-center justify-between">
                     <span>Evidence Feed</span>

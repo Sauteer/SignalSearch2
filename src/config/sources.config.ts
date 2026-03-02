@@ -22,12 +22,12 @@ export const SEARCH_SOURCES = {
   ],
   subreddits: ["LocalLLM", "MachineLearning", "ArtificialInteligence", "OpenAI", "ChatGPT", "ClaudeAI"],
   youtubeChannels: [
-    "UCv83tO5ceSyJDSZL", // Example - AI Explained
-    "UCSHZKyawb77iyD7pPg4xNVg", // Andrej Karpathy
-    "UC9HBaENPPw44Ym7L8P6eKAQ", // Redpoint Ventures
-    "UCsBK2objvKWOmRgdZK-bevg", // Cognitive Revolution
-    "UC0s7HV4GF-8ly1Nu3TOo4Vg", // Yannic Kilcher
-    "UCL5EUbZTHLoE1vlwUmcJf7g", // Two Minute Papers
+    { id: "UCv83tO5ceSyJDSZL", name: "AI Explained" },
+    { id: "UCSHZKyawb77iyD7pPg4xNVg", name: "Andrej Karpathy" },
+    { id: "UC9HBaENPPw44Ym7L8P6eKAQ", name: "Redpoint Ventures" },
+    { id: "UCsBK2objvKWOmRgdZK-bevg", name: "Cognitive Revolution" },
+    { id: "UC0s7HV4GF-8ly1Nu3TOo4Vg", name: "Yannic Kilcher" },
+    { id: "UCL5EUbZTHLoE1vlwUmcJf7g", name: "Two Minute Papers" },
   ],
   hackerNews: {
     minPoints: 50,

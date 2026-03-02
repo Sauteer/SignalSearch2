@@ -185,7 +185,12 @@ Synthesize these results fulfilling the user's intent. Focus on technical novelt
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+      console.error("OpenRouter API Error Response:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     if (!response.body) {

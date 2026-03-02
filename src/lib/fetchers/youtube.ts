@@ -79,7 +79,7 @@ export async function fetchYouTube(
     // we just fetch generally. To strictly filter by selected channels from the UI config, we could launch 
     // parallel requests per channel, but that eats quota fast.
     // For now, if the array is narrow (1 channel), we can use channelId.
-    const activeChannels = specificChannels?.length ? specificChannels : SEARCH_SOURCES.youtubeChannels
+    const activeChannels = specificChannels?.length ? specificChannels : SEARCH_SOURCES.youtubeChannels.map(c => c.id)
     if (activeChannels.length === 1) {
       searchUrl.searchParams.set("channelId", activeChannels[0])
     }

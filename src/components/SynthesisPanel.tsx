@@ -1,117 +1,106 @@
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 interface SynthesisPanelProps {
   synthesis: string
   isLoading: boolean
   className?: string
+  onCitationHover?: (citationId: string | null) => void
 }
 
-export function SynthesisPanel({ synthesis, isLoading, className }: SynthesisPanelProps) {
+export function SynthesisPanel({ synthesis, isLoading, className, onCitationHover }: SynthesisPanelProps) {
   return (
-    <Card className={cn("h-full", className)}>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          AI Synthesis
+    <div className={cn("h-full flex flex-col relative", className)}>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-xl font-medium tracking-tight text-foreground/80 flex items-center gap-3">
+          Synthesis
           {isLoading && (
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
           )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </h2>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 pb-12 text-[1.05rem] leading-[1.6]">
         {isLoading && !synthesis ? (
-          <div className="space-y-3">
-            <div className="h-4 bg-muted rounded animate-pulse w-full" />
-            <div className="h-4 bg-muted rounded animate-pulse w-5/6" />
-            <div className="h-4 bg-muted rounded animate-pulse w-4/6" />
-            <div className="h-4 bg-muted rounded animate-pulse w-full" />
-            <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
+          <div className="space-y-4">
+            <div className="h-4 bg-muted/60 rounded animate-pulse w-full" />
+            <div className="h-4 bg-muted/60 rounded animate-pulse w-5/6" />
+            <div className="h-4 bg-muted/60 rounded animate-pulse w-4/6" />
+            <div className="h-4 bg-muted/60 rounded animate-pulse w-full" />
+            <div className="h-4 bg-muted/60 rounded animate-pulse w-3/4" />
           </div>
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-p:leading-[1.6] prose-li:leading-[1.6] text-foreground/90 max-w-none">
             {synthesis.split("\n").map((line, i) => {
-              // Handle headers
               if (line.startsWith("### ")) {
-                return (
-                  <h3 key={i} className="text-base font-semibold mt-4 mb-2 text-foreground">
-                    {line.replace("### ", "")}
-                  </h3>
-                )
+                return <h3 key={i} className="text-lg font-semibold mt-6 mb-3 text-foreground">{line.replace("### ", "")}</h3>
               }
               if (line.startsWith("## ")) {
-                return (
-                  <h2 key={i} className="text-lg font-semibold mt-4 mb-2 text-foreground">
-                    {line.replace("## ", "")}
-                  </h2>
-                )
+                return <h2 key={i} className="text-xl font-semibold mt-8 mb-4 text-foreground">{line.replace("## ", "")}</h2>
               }
-              // Handle bullet points
               if (line.startsWith("- ")) {
                 return (
-                  <li key={i} className="text-sm text-muted-foreground ml-4">
-                    <RenderMarkdown text={line.replace("- ", "")} />
+                  <li key={i} className="ml-4 mb-2 pl-2">
+                    <RenderMarkdown text={line.substring(2)} onHover={onCitationHover} />
                   </li>
                 )
               }
-              // Handle numbered lists
               if (/^\d+\.\s/.test(line)) {
                 return (
-                  <li key={i} className="text-sm text-muted-foreground ml-4 list-decimal">
-                    <RenderMarkdown text={line.replace(/^\d+\.\s/, "")} />
+                  <li key={i} className="ml-4 mb-2 pl-2 list-decimal">
+                    <RenderMarkdown text={line.replace(/^\d+\.\s/, "")} onHover={onCitationHover} />
                   </li>
                 )
               }
-              // Handle empty lines
               if (!line.trim()) {
-                return <div key={i} className="h-2" />
+                return <div key={i} className="h-4" />
               }
-              // Regular paragraph
               return (
-                <p key={i} className="text-sm text-muted-foreground mb-2">
-                  <RenderMarkdown text={line} />
+                <p key={i} className="mb-4">
+                  <RenderMarkdown text={line} onHover={onCitationHover} />
                 </p>
               )
             })}
+
+            {/* The Typewriter Cursor */}
+            {isLoading && synthesis.length > 0 && (
+              <span className="inline-block w-2.5 h-5 ml-1 bg-primary align-middle animate-pulse" />
+            )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
-// Helper component to render inline markdown
-function RenderMarkdown({ text }: { text: string }) {
-  // Handle bold text **text**
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  
+function RenderMarkdown({ text, onHover }: { text: string, onHover?: (id: string | null) => void }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\[\d+\])/g)
+
   return (
     <>
       {parts.map((part, i) => {
         if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={i} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
+        }
+        if (/^\[\d+\]$/.test(part)) {
+          const id = part.replace(/[\[\]]/g, "")
           return (
-            <strong key={i} className="font-semibold text-foreground">
-              {part.slice(2, -2)}
-            </strong>
+            <sup
+              key={i}
+              className="text-primary font-bold cursor-pointer hover:underline px-0.5"
+              onMouseEnter={() => onHover?.(id)}
+              onMouseLeave={() => onHover?.(null)}
+            >
+              {part}
+            </sup>
           )
         }
-        // Handle citations [N]
-        const citationParts = part.split(/(\[\d+\])/g)
-        return citationParts.map((cite, j) => {
-          if (/^\[\d+\]$/.test(cite)) {
-            return (
-              <sup key={`${i}-${j}`} className="text-primary font-medium cursor-pointer hover:underline">
-                {cite}
-              </sup>
-            )
-          }
-          return <span key={`${i}-${j}`}>{cite}</span>
-        })
+        return <span key={i}>{part}</span>
       })}
     </>
   )

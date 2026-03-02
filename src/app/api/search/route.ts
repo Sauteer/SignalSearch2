@@ -145,6 +145,7 @@ export async function POST(request: NextRequest) {
     // Pass the config into the OpenRouter streaming fetcher
     let synthesis = "";
     try {
+      console.log(`Starting synthesis with model: anthropic/claude-3.5-sonnet, query: ${fallbackQuery}`);
       for await (const chunk of synthesizeWithOpenRouterStream(
         topResults,
         fallbackQuery,
@@ -153,11 +154,19 @@ export async function POST(request: NextRequest) {
       )) {
         synthesis += chunk;
       }
+
+      if (!synthesis) {
+        throw new Error("Empty synthesis received from OpenRouter");
+      }
     } catch (synthesisError) {
-      console.error("Synthesis error:", synthesisError);
+      console.error("DETAILED Synthesis error:", {
+        message: synthesisError instanceof Error ? synthesisError.message : String(synthesisError),
+        stack: synthesisError instanceof Error ? synthesisError.stack : undefined,
+        config: synthesisConfig
+      });
       return NextResponse.json({
         results: topResults,
-        synthesis: "Synthesis failed. Showing raw results only.",
+        synthesis: `Synthesis failed: ${synthesisError instanceof Error ? synthesisError.message : "Unknown error"}. Showing raw results only.`,
         query: fallbackQuery,
         timestamp: new Date(),
         totalResults: uniqueResults.length,
