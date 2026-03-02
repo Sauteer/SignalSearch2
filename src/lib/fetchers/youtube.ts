@@ -39,7 +39,8 @@ export async function fetchYouTube(
   query: string,
   maxResults: number = 10,
   timeRange?: TimeRange | TimeRangeValue,
-  specificChannels?: string[]
+  specificChannels?: string[],
+  customDateRange?: import("@/lib/types").CustomDateRange
 ): Promise<RawSignal[]> {
   const apiKey = process.env.YOUTUBE_API_KEY
 
@@ -49,7 +50,7 @@ export async function fetchYouTube(
   }
 
   try {
-    const { start, end } = getDateRange(timeRange);
+    const { start, end } = getDateRange(timeRange, customDateRange);
 
     // Search for videos
     const searchUrl = new URL(

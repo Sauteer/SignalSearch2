@@ -1,12 +1,34 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { TimeRange, TimeRangeValue } from "./types"
+import { TimeRange, TimeRangeValue, CustomDateRange } from "./types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function getDateRange(timeRange?: TimeRange | TimeRangeValue): { start?: Date, end?: Date } {
+export function getDateRange(timeRange?: TimeRange | TimeRangeValue, customDateRange?: CustomDateRange): { start?: Date, end?: Date } {
+  if (customDateRange) {
+    // customDateRange.value[0] is smaller/newer (e.g. 0 days ago)
+    // customDateRange.value[1] is larger/older (e.g. 30 days ago)
+    const { unit, value } = customDateRange;
+    const calculateOffset = (val: number): Date => {
+      const d = new Date();
+      if (unit === "days") d.setDate(d.getDate() - val);
+      if (unit === "weeks") d.setDate(d.getDate() - val * 7);
+      if (unit === "months") d.setMonth(d.getMonth() - val);
+      return d;
+    };
+
+    // start bound = the 'newer' date (smaller offset)
+    const start = calculateOffset(value[0]);
+    // end bound = the 'older' date (larger offset)
+    const end = calculateOffset(value[1]);
+
+    // if value[0] is 0, start is effectively "now"
+    // if value[1] is the max allowed, maybe we want to not cap it, but exact ranges are fine.
+    return { start, end };
+  }
+
   if (!timeRange) return {};
 
   const calculateDate = (range: TimeRange, isStart: boolean): Date | undefined => {

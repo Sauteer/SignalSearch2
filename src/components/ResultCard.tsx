@@ -123,123 +123,65 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
               </div>
             </div>
 
-            <h3 className="text-sm font-semibold text-foreground mb-2 line-clamp-1 group-hover:text-primary transition-colors pr-8">
+            <h3 className="text-lg font-bold text-foreground mb-3 line-clamp-2 group-hover:text-primary transition-colors pr-8">
               {result.title}
             </h3>
 
-            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
               {highlightSnippet(result.snippet, result.title)}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+        <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
           <button
-            onClick={() => setExpanded(true)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-secondary"
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary border border-border/50"
           >
-            <Expand className="w-3 h-3" />
-            Preview
+            {expanded ? <X className="w-3.5 h-3.5" /> : <Expand className="w-3.5 h-3.5" />}
+            {expanded ? "Close Preview" : "Preview Content"}
           </button>
+
+          {result.sourceType === "youtube" && (
+            <span className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[#FF0000] bg-[#FF0000]/10 px-2.5 py-1.5 rounded-lg border border-[#FF0000]/20 ml-2">
+              <Youtube className="w-3.5 h-3.5" />
+              Inside Transcript
+            </span>
+          )}
+
           <a
             href={result.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-secondary"
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary ml-auto"
           >
-            <ExternalLink className="w-3 h-3" />
+            <ExternalLink className="w-3.5 h-3.5" />
             Visit
           </a>
 
           {(result.engagement > 0 || result.points) && (
-            <div className="ml-auto flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground bg-muted/50 px-2 py-1.5 rounded-lg border border-border/50">
               {result.sourceType === "social" ? (
-                <Heart className="w-3 h-3" />
+                <Heart className="w-3 h-3 text-red-400" />
               ) : (
-                <TrendingUp className="w-3 h-3" />
+                <TrendingUp className="w-3 h-3 text-primary" />
               )}
               {result.points ?? result.engagement}
-              {result.comments && ` · ${result.comments} c`}
+              {result.comments ? ` · ${result.comments} c` : ''}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Expanded preview overlay */}
-      {expanded && (
-        <div
-          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
-          onClick={() => setExpanded(false)}
-        >
-          <div
-            className="bg-card border border-border rounded-2xl p-8 max-w-2xl w-full max-h-[80vh] overflow-auto glow-primary relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Icon
-                  className="w-5 h-5"
-                  style={{ color: `hsl(var(--${colorClass}))` }}
-                />
-                <span className="text-sm font-mono text-muted-foreground">
-                  {result.source}
-                </span>
-              </div>
-              <button
-                onClick={() => setExpanded(false)}
-                className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-secondary"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <h2 className="text-lg font-semibold text-foreground mb-3 pr-8">
-              {result.title}
-            </h2>
-
-            <div className="text-sm text-secondary-foreground leading-relaxed mb-4 font-mono">
+        {/* Expanded inline preview */}
+        {expanded && (
+          <div className="mt-4 pt-4 border-t border-border/50 animate-fade-in bg-muted/10 -mx-5 -mb-5 p-5 rounded-b-xl overflow-hidden">
+            <h4 className="text-sm font-bold text-foreground mb-2">Extended Context</h4>
+            <div className="text-sm text-secondary-foreground leading-relaxed font-mono whitespace-pre-wrap max-h-[400px] overflow-y-auto custom-scrollbar pr-3">
               {result.rawContent ? highlightSnippet(result.rawContent, result.title) : highlightSnippet(result.snippet, result.title)}
             </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                {result.publishedAt ? new Date(result.publishedAt).toLocaleString() : "Recent"}
-              </span>
-              <div className="flex items-center gap-1">
-                <TrendingUp className="w-3 h-3 text-primary" />
-                <span className="text-xs font-mono text-primary">
-                  {(result.finalScore * 100).toFixed(0)}% relevance
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-5">
-              <a
-                href={result.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Visit Source
-              </a>
-              {user && (
-                <button
-                  className={cn(
-                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors border",
-                    isSaved ? "bg-primary/10 text-primary border-primary/20" : "bg-card text-foreground hover:bg-secondary border-border"
-                  )}
-                  onClick={handleSave}
-                  disabled={isSaving || isSaved}
-                >
-                  <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
-                  {isSaved ? "Saved" : "Save"}
-                </button>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </>
   )
 }

@@ -8,14 +8,15 @@ export async function searchReddit(
   query: string,
   maxResults: number = 10,
   timeRange?: TimeRange | TimeRangeValue,
-  specificSubreddits?: string[]
+  specificSubreddits?: string[],
+  customDateRange?: import("@/lib/types").CustomDateRange
 ): Promise<SearchResult[]> {
   try {
     const subreddits = specificSubreddits?.length ? specificSubreddits : SEARCH_SOURCES.subreddits;
     const allResults: SearchResult[] = [];
 
     // Parse the range
-    const { start, end } = getDateRange(timeRange);
+    const { start, end } = getDateRange(timeRange, customDateRange);
 
     // Determine the 't' parameter for Reddit based on the 'end' (the older bound)
     // We want to fetch enough to cover the window, then filter inside.

@@ -13,7 +13,8 @@ interface ExaTweetResult {
 export async function fetchSocial(
   query: string,
   maxResults: number = 10,
-  timeRange?: TimeRange | TimeRangeValue
+  timeRange?: TimeRange | TimeRangeValue,
+  customDateRange?: import("@/lib/types").CustomDateRange
 ): Promise<RawSignal[]> {
   const exaApiKey = process.env.EXA_API_KEY
 
@@ -22,7 +23,7 @@ export async function fetchSocial(
     return []
   }
 
-  const { start, end } = getDateRange(timeRange);
+  const { start, end } = getDateRange(timeRange, customDateRange);
   const startPublishedDate = end?.toISOString();
   const endPublishedDate = start?.toISOString();
 

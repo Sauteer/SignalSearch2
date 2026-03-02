@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { SearchQuery, TimeRange, TimeRangeValue } from "@/lib/types"
+import { SearchQuery, TimeRange, TimeRangeValue, CustomDateRange } from "@/lib/types"
 import { SEARCH_SOURCES } from "@/config/sources.config"
 import { Checkbox } from "./ui/checkbox"
 import * as Slider from "@radix-ui/react-slider"
@@ -11,6 +11,8 @@ import { Clock, ChevronDown, ChevronUp } from "lucide-react"
 interface AdvancedFiltersProps {
     timeRange: TimeRangeValue;
     onTimeRangeChange: (value: TimeRangeValue) => void;
+    customDateRange?: CustomDateRange;
+    onCustomDateRangeChange?: (value: CustomDateRange) => void;
     specificSources: NonNullable<SearchQuery["specificSources"]>;
     onSpecificSourcesChange: (sources: NonNullable<SearchQuery["specificSources"]>) => void;
     synthesisConfig: NonNullable<SearchQuery["synthesisConfig"]>;
@@ -30,6 +32,8 @@ const TIME_RANGE_MAP: { label: string; value: TimeRange }[] = [
 export function AdvancedFilters({
     timeRange,
     onTimeRangeChange,
+    customDateRange = { unit: "months", value: [0, 12] },
+    onCustomDateRangeChange,
     specificSources,
     onSpecificSourcesChange,
     synthesisConfig,
@@ -163,23 +167,42 @@ export function AdvancedFilters({
                             </div>
 
                             <div className="bg-muted/20 p-8 rounded-3xl border border-border/50">
+                                <div className="flex items-center gap-4 mb-8 border-b border-border/50 pb-6">
+                                    <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest mr-4">Unit</span>
+                                    {(["days", "weeks", "months"] as const).map(unit => (
+                                        <label key={unit} className={cn("flex items-center space-x-2 cursor-pointer transition-all border px-4 py-2 rounded-xl", customDateRange.unit === unit ? "bg-primary/20 border-primary text-primary font-bold" : "bg-card border-border/50 text-muted-foreground hover:bg-muted/50")}>
+                                            <input
+                                                type="radio"
+                                                name="time_unit"
+                                                className="hidden"
+                                                checked={customDateRange.unit === unit}
+                                                onChange={() => onCustomDateRangeChange?.({
+                                                    unit,
+                                                    value: unit === "days" ? [0, 14] : unit === "weeks" ? [0, 8] : [0, 12]
+                                                })}
+                                            />
+                                            <span className="capitalize">{unit}</span>
+                                        </label>
+                                    ))}
+                                </div>
+
                                 <div className="flex justify-between items-center mb-10">
                                     <span className="text-sm sm:text-base font-bold text-primary bg-primary/10 px-4 py-2 rounded-xl uppercase tracking-wider">
-                                        From: {TIME_RANGE_MAP[currentIndices[0]].label}
+                                        Newer: {customDateRange.value[0] === 0 ? "Now" : `${customDateRange.value[0]} ${customDateRange.unit} ago`}
                                     </span>
                                     <span className="text-sm sm:text-base font-bold text-primary bg-primary/10 px-4 py-2 rounded-xl uppercase tracking-wider">
-                                        To: {TIME_RANGE_MAP[currentIndices[1]].label}
+                                        Older: {customDateRange.value[1]} {customDateRange.unit} ago
                                     </span>
                                 </div>
 
                                 <div className="px-4 pb-4">
                                     <Slider.Root
                                         className="relative flex items-center select-none touch-none w-full h-8"
-                                        value={currentIndices}
-                                        max={TIME_RANGE_MAP.length - 1}
+                                        value={customDateRange.value}
+                                        max={customDateRange.unit === "days" ? 30 : customDateRange.unit === "weeks" ? 52 : 24}
                                         step={1}
-                                        minStepsBetweenThumbs={0}
-                                        onValueChange={handleSliderChange}
+                                        minStepsBetweenThumbs={1}
+                                        onValueChange={(val) => onCustomDateRangeChange?.({ ...customDateRange, value: val as [number, number] })}
                                     >
                                         <Slider.Track className="bg-muted-foreground/20 relative grow rounded-full h-2.5">
                                             <Slider.Range className="absolute bg-primary rounded-full h-full" />
@@ -193,27 +216,9 @@ export function AdvancedFilters({
                                             aria-label="Upper bound"
                                         />
                                     </Slider.Root>
-                                    <div className="flex justify-between mt-8 px-1">
-                                        {TIME_RANGE_MAP.map((t, i) => (
-                                            <button
-                                                key={t.value}
-                                                type="button"
-                                                onClick={() => {
-                                                    const dist0 = Math.abs(currentIndices[0] - i);
-                                                    const dist1 = Math.abs(currentIndices[1] - i);
-                                                    if (dist0 < dist1) handleSliderChange([i, currentIndices[1]]);
-                                                    else handleSliderChange([currentIndices[0], i]);
-                                                }}
-                                                className={cn(
-                                                    "text-sm sm:text-base font-bold transition-all hover:text-foreground px-3 py-1.5 rounded-lg",
-                                                    currentIndices[0] <= i && i <= currentIndices[1]
-                                                        ? "text-primary bg-primary/10 scale-110 shadow-sm"
-                                                        : "text-muted-foreground/60 hover:bg-muted/50"
-                                                )}
-                                            >
-                                                {t.label}
-                                            </button>
-                                        ))}
+                                    <div className="flex justify-between mt-8 px-1 text-xs sm:text-sm text-foreground/50 font-bold uppercase tracking-wider">
+                                        <span>Now</span>
+                                        <span>Max ({customDateRange.unit === "days" ? 30 : customDateRange.unit === "weeks" ? 52 : 24})</span>
                                     </div>
                                 </div>
                             </div>

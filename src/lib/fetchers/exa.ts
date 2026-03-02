@@ -9,14 +9,15 @@ export async function searchExa(
   apiKey: string,
   maxResults: number = 10,
   timeRange?: TimeRange | TimeRangeValue,
-  specificDomains?: string[]
+  specificDomains?: string[],
+  customDateRange?: import("@/lib/types").CustomDateRange
 ): Promise<SearchResult[]> {
   if (!apiKey) {
     console.warn("Exa API key not configured, skipping Exa search");
     return [];
   }
 
-  const { start, end } = getDateRange(timeRange);
+  const { start, end } = getDateRange(timeRange, customDateRange);
   const startPublishedDate = end?.toISOString();
   const endPublishedDate = start?.toISOString();
 

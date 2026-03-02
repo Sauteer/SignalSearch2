@@ -35,12 +35,13 @@ interface SearchBody {
     youtubeChannels?: string[];
   };
   maxResults?: number;
+  customDateRange?: import("@/lib/types").CustomDateRange;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: SearchBody = await request.json();
-    const { intention, keywords, sources, timeRange, specificSources, useSynonyms, synthesisConfig, maxResults = 10 } = body;
+    const { intention, keywords, sources, timeRange, specificSources, useSynonyms, synthesisConfig, maxResults = 10, customDateRange } = body;
 
     // We now require either an intention or keywords (or both)
     if (!intention?.trim() && !keywords?.trim()) {
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     // Exa supports semantic search, so it shines with Intention. If no intention, use keywords.
     if (enabledSources.exa && exaApiKey) {
-      searchPromises.push(searchExa(fallbackQuery, exaApiKey, maxResults, timeRange, specificSources?.exaDomains));
+      searchPromises.push(searchExa(fallbackQuery, exaApiKey, maxResults, timeRange, specificSources?.exaDomains, customDateRange));
     }
 
     // Lexical (strict keyword) APIs. They perform poorly with full semantic sentences.
@@ -101,21 +102,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (enabledSources.hackerNews) {
-      searchPromises.push(searchHackerNews(lexicalQuery, maxResults, timeRange));
-      searchPromises.push(searchHackerNewsByDate(lexicalQuery, Math.ceil(maxResults / 2), timeRange));
+      searchPromises.push(searchHackerNews(lexicalQuery, maxResults, timeRange, customDateRange));
+      searchPromises.push(searchHackerNewsByDate(lexicalQuery, Math.ceil(maxResults / 2), timeRange, customDateRange));
     }
 
     if (enabledSources.reddit) {
-      searchPromises.push(searchReddit(lexicalQuery, maxResults, timeRange, specificSources?.subreddits));
+      searchPromises.push(searchReddit(lexicalQuery, maxResults, timeRange, specificSources?.subreddits, customDateRange));
     }
 
     if (enabledSources.youtube) {
-      searchPromises.push(fetchYouTube(lexicalQuery, maxResults, timeRange, specificSources?.youtubeChannels));
+      searchPromises.push(fetchYouTube(lexicalQuery, maxResults, timeRange, specificSources?.youtubeChannels, customDateRange));
     }
 
     // Social works best with keywords too
     if (enabledSources.social) {
-      searchPromises.push(fetchSocial(lexicalQuery, maxResults, timeRange));
+      searchPromises.push(fetchSocial(lexicalQuery, maxResults, timeRange, customDateRange));
     }
 
     // Wait for all searches with Promise.allSettled
@@ -164,43 +165,56 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Pass the config into the OpenRouter streaming fetcher
-    let synthesis = "";
-    try {
-      console.log(`Starting synthesis with model: ${finalSynthesisConfig.model}, query: ${fallbackQuery}`);
-      for await (const chunk of synthesizeWithOpenRouterStream(
-        topResults,
-        fallbackQuery,
-        openRouterApiKey,
-        finalSynthesisConfig
-      )) {
-        synthesis += chunk;
-      }
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        // Send initial results so UI can render them immediately
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: "results", data: topResults })}\n\n`)
+        );
 
-      if (!synthesis) {
-        throw new Error("Empty synthesis received from OpenRouter");
-      }
-    } catch (synthesisError) {
-      console.error("DETAILED Synthesis error:", {
-        message: synthesisError instanceof Error ? synthesisError.message : String(synthesisError),
-        stack: synthesisError instanceof Error ? synthesisError.stack : undefined,
-        config: finalSynthesisConfig
-      });
-      return NextResponse.json({
-        results: topResults,
-        synthesis: `Synthesis failed: ${synthesisError instanceof Error ? synthesisError.message : "Unknown error"}. Showing raw results only.`,
-        query: fallbackQuery,
-        timestamp: new Date(),
-        totalResults: uniqueResults.length,
-      });
-    }
+        try {
+          console.log(`Starting synthesis with model: ${finalSynthesisConfig.model}, query: ${fallbackQuery}`);
+          for await (const chunk of synthesizeWithOpenRouterStream(
+            topResults,
+            fallbackQuery,
+            openRouterApiKey,
+            finalSynthesisConfig
+          )) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: "synthesis", data: chunk })}\n\n`)
+            );
+          }
 
-    return NextResponse.json({
-      results: topResults,
-      synthesis,
-      query: fallbackQuery,
-      timestamp: new Date(),
-      totalResults: uniqueResults.length,
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: "complete" })}\n\n`)
+          );
+        } catch (synthesisError) {
+          console.error("DETAILED Synthesis error:", {
+            message: synthesisError instanceof Error ? synthesisError.message : String(synthesisError),
+            stack: synthesisError instanceof Error ? synthesisError.stack : undefined,
+            config: finalSynthesisConfig
+          });
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "error",
+                data: `Synthesis failed: ${synthesisError instanceof Error ? synthesisError.message : "Unknown error"}. Showing raw results only.`
+              })}\n\n`
+            )
+          );
+        } finally {
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     });
   } catch (error) {
     console.error("Search API error:", error);

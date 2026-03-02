@@ -38,6 +38,11 @@ export interface SearchResult {
 export type TimeRange = "24h" | "week" | "month" | "year" | "all";
 export type TimeRangeValue = [TimeRange, TimeRange];
 
+export interface CustomDateRange {
+  unit: "days" | "weeks" | "months";
+  value: [number, number];
+}
+
 
 export interface SearchQuery {
   intention: string;
@@ -66,6 +71,7 @@ export interface SearchQuery {
     from: Date;
     to: Date;
   };
+  customDateRange?: CustomDateRange;
 }
 
 export interface SearchResponse {

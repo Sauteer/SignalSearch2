@@ -7,11 +7,12 @@ const HN_ALGOLIA_API = "https://hn.algolia.com/api/v1";
 export async function searchHackerNews(
   query: string,
   maxResults: number = 10,
-  timeRange?: TimeRange | TimeRangeValue
+  timeRange?: TimeRange | TimeRangeValue,
+  customDateRange?: import("@/lib/types").CustomDateRange
 ): Promise<SearchResult[]> {
   try {
     const { minPoints } = SEARCH_SOURCES.hackerNews;
-    const { start, end } = getDateRange(timeRange);
+    const { start, end } = getDateRange(timeRange, customDateRange);
 
     let numericFilters = `points>=${minPoints}`;
     if (end) {
@@ -66,11 +67,12 @@ export async function searchHackerNews(
 export async function searchHackerNewsByDate(
   query: string,
   maxResults: number = 10,
-  timeRange?: TimeRange | TimeRangeValue
+  timeRange?: TimeRange | TimeRangeValue,
+  customDateRange?: import("@/lib/types").CustomDateRange
 ): Promise<SearchResult[]> {
   try {
     const { minPoints } = SEARCH_SOURCES.hackerNews;
-    const { start, end } = getDateRange(timeRange);
+    const { start, end } = getDateRange(timeRange, customDateRange);
 
     let numericFilters = `points>=${minPoints}`;
     if (end) {
