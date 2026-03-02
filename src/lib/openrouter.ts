@@ -1,4 +1,4 @@
-import { SearchResult, OpenRouterMessage } from "./types";
+import { SearchResult, OpenRouterMessage, SearchQuery } from "./types";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -120,11 +120,24 @@ export async function* synthesizeWithOpenRouterStream(
   results: SearchResult[],
   query: string,
   apiKey: string,
+  synthesisConfig?: NonNullable<SearchQuery["synthesisConfig"]>,
   model: string = "anthropic/claude-3.5-sonnet"
 ): AsyncGenerator<string, void, unknown> {
   if (!apiKey) {
     throw new Error("OpenRouter API key not configured");
   }
+
+  // Map user configs to prompt directives
+  let personaDirective = "Head of Product in AI/ML";
+  if (synthesisConfig?.persona === "eli5") personaDirective = "friendly teacher explaining to a smart 5-year old";
+  if (synthesisConfig?.persona === "academic") personaDirective = "rigorous academic researcher prioritizing peer-reviewed evidence";
+
+  let formatDirective = "summarize search results with extreme density and precision";
+  if (synthesisConfig?.format === "brief") formatDirective = "provide an extremely brief, 3-bullet-point TL;DR. No fluff.";
+  if (synthesisConfig?.format === "actionable") formatDirective = "extract only actionable takeaways and concrete next steps.";
+
+  const dynamicSystemPrompt = `You are a research synthesis assistant for a ${personaDirective}. Your task is to ${formatDirective}.
+${SYSTEM_PROMPT.replace(`You are a research synthesis assistant for a Head of Product in AI/ML. Your task is to summarize search results with extreme density and precision.`, "")}`;
 
   const formattedResults = results
     .slice(0, 10)
@@ -140,15 +153,15 @@ URL: ${result.url}`;
     .join("\n\n---\n\n");
 
   const messages: OpenRouterMessage[] = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: dynamicSystemPrompt },
     {
       role: "user",
-      content: `Query: ${query}
+      content: `User's Primary Intention/Goal: ${query || "Provide a general synthesis."}
 
 Search Results:
 ${formattedResults}
 
-Synthesize these results for a Head of Product. Focus on technical novelty, architectural decisions, and recency. Ignore SEO content. Use Markdown with inline citations.`,
+Synthesize these results fulfilling the user's intent. Focus on technical novelty, architectural decisions, and recency. Ignore SEO content. Use Markdown with inline citations.`,
     },
   ];
 
@@ -216,5 +229,54 @@ Synthesize these results for a Head of Product. Focus on technical novelty, arch
   } catch (error) {
     console.error("OpenRouter streaming error:", error);
     throw error;
+  }
+}
+
+// Generates an expanded keyword string using OR operators for Lexical APIs
+export async function generateSynonyms(
+  keywords: string,
+  intention: string,
+  apiKey: string
+): Promise<string> {
+  if (!apiKey || !keywords) return keywords;
+
+  const prompt = `You are a search query optimizer. The user wants to search for keywords: "${keywords}". 
+Their overall intention is: "${intention || keywords}".
+Generate 2 highly relevant synonym phrases or alternate terms that a professional would use for these keywords.
+Return ONLY a single string consisting of the original keywords and your synonyms separated by the OR operator.
+Do not include any other text, quotes, or conversational filler.
+Example output: RAG PUBSUB OR ("retrieval augmented generation" AND "publish-subscribe") OR "vector search message queue"`
+
+  try {
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-Title": "SignalSearch Synonyms",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash", // Fast, cheap model
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.1,
+        max_tokens: 50,
+      }),
+    });
+
+    if (!response.ok) return keywords;
+
+    const data = await response.json();
+    const expanded = data.choices[0]?.message?.content?.trim();
+
+    // Fallback if LLM outputs something weird
+    if (!expanded || expanded.length > 200 || expanded.includes("\n")) {
+      return keywords;
+    }
+
+    return expanded;
+  } catch (error) {
+    console.error("Synonyms generation error:", error);
+    return keywords;
   }
 }

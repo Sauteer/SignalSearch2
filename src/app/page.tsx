@@ -15,7 +15,8 @@ export default function HomePage() {
   const [results, setResults] = React.useState<SearchResult[]>([])
   const [synthesis, setSynthesis] = React.useState("")
   const [error, setError] = React.useState<string | null>(null)
-  const [query, setQuery] = React.useState("")
+  const [currentIntention, setCurrentIntention] = React.useState("")
+  const [currentKeywords, setCurrentKeywords] = React.useState("")
 
   const [filters, setFilters] = React.useState<SourceFilters>({
     exa: true,
@@ -33,12 +34,20 @@ export default function HomePage() {
     youtubeChannels: [...SEARCH_SOURCES.youtubeChannels],
   })
 
-  const handleSearch = async (searchQuery: string) => {
+  const [useSynonyms, setUseSynonyms] = React.useState(false)
+  const [synthesisConfig, setSynthesisConfig] = React.useState<NonNullable<SearchQuery["synthesisConfig"]>>({
+    enabled: true,
+    format: "detailed",
+    persona: "expert",
+  })
+
+  const handleSearch = async (intention: string, keywords: string) => {
     setIsLoading(true)
     setError(null)
     setResults([])
     setSynthesis("")
-    setQuery(searchQuery)
+    setCurrentIntention(intention)
+    setCurrentKeywords(keywords)
 
     try {
       const response = await fetch("/api/search", {
@@ -47,10 +56,13 @@ export default function HomePage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query: searchQuery,
+          intention,
+          keywords,
           sources: filters,
           timeRange,
           specificSources,
+          useSynonyms,
+          synthesisConfig,
           maxResults: 10,
         }),
       })
@@ -127,92 +139,77 @@ export default function HomePage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background text-foreground">
-        {/* Header */}
-        <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
-          <div className="container max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-bold text-foreground">
-                SignalSearch
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                High-signal AI/ML search aggregator
-              </p>
-            </div>
-            <SearchBar onSearch={handleSearch} isLoading={isLoading} />
-            <div className="mt-3">
-              <SourceFilter filters={filters} onFilterChange={setFilters} />
-              <AdvancedFilters
-                timeRange={timeRange}
-                onTimeRangeChange={setTimeRange}
-                specificSources={specificSources}
-                onSpecificSourcesChange={setSpecificSources}
-              />
+      <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden relative">
+        {/* Floating Global Command Bar Area */}
+        <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pt-8 pointer-events-auto">
+          <div className="w-full max-w-2xl px-4 flex flex-col items-center">
+            {/* The Search interface is now absolute/floating at top center */}
+            <div className="w-full relative group">
+              {/* Optional backdrop blur behind search area */}
+              <div className="absolute -inset-4 bg-background/50 backdrop-blur-md z-[-1] rounded-3xl group-focus-within:bg-background/80 transition-colors pointer-events-none" />
+              <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+              <div className="mt-4 flex justify-center w-full">
+                <SourceFilter filters={filters} onFilterChange={setFilters} />
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground hidden group-focus-within:flex justify-center flex-wrap max-w-xl mx-auto opacity-50 hover:opacity-100 transition-opacity">
+                <AdvancedFilters
+                  timeRange={timeRange}
+                  onTimeRangeChange={setTimeRange}
+                  specificSources={specificSources}
+                  onSpecificSourcesChange={setSpecificSources}
+                  synthesisConfig={synthesisConfig}
+                  onSynthesisConfigChange={setSynthesisConfig}
+                  useSynonyms={useSynonyms}
+                  onUseSynonymsChange={setUseSynonyms}
+                />
+              </div>
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* Main content */}
-        <main className="container max-w-7xl mx-auto px-4 py-6">
-          {/* Error display */}
-          {error && (
-            <div className="mb-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-              {error}
+        {/* Dual-Pane Workspace (Body) */}
+        {/* We add top margin to account for the floating header. If there's no result, we center it. */}
+        <main className="flex-1 flex overflow-hidden mt-40">
+          {(!results.length && !synthesis && !isLoading) ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground pb-20">
+              <p className="text-xl">Press ⌘K to start discovery</p>
+              <p className="text-sm mt-2">Try "RAG improvements" or "LLM benchmarks"</p>
             </div>
-          )}
-
-          {/* Empty state */}
-          {!isLoading && results.length === 0 && !synthesis && (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground text-lg mb-2">
-                Search for AI/ML topics
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Try queries like "RAG improvements", "LLM benchmarks", or "new model releases"
-              </p>
-            </div>
-          )}
-
-          {/* Dual-pane view */}
-          {(results.length > 0 || synthesis || isLoading) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left column: Synthesis */}
-              <div className="lg:sticky lg:top-[180px] lg:self-start">
+          ) : (
+            <div className="flex-1 flex w-full h-full">
+              {/* Left Pane: The Synthesis (The "Brain") 60% */}
+              <div className="w-full lg:w-[60%] flex flex-col overflow-hidden border-r border-border p-6 h-full">
                 <SynthesisPanel synthesis={synthesis} isLoading={isLoading} />
               </div>
 
-              {/* Right column: Raw signals */}
-              <div className="space-y-3">
-                <h2 className="text-sm font-medium text-muted-foreground mb-3">
-                  Raw Signals {results.length > 0 && `(${results.length} results)`}
-                </h2>
-                {results.length === 0 && isLoading ? (
-                  <div className="space-y-3">
-                    {[...Array(5)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-24 rounded-xl bg-muted animate-pulse"
-                      />
-                    ))}
+              {/* Right Pane: The Source Feed (The "Evidence") 40% */}
+              <div className="w-full lg:w-[40%] flex flex-col overflow-hidden bg-muted/5 h-full relative">
+                <div className="absolute inset-0 p-6 overflow-y-auto custom-scrollbar">
+                  <h2 className="text-sm font-medium text-muted-foreground mb-4 sticky top-0 bg-background/80 backdrop-blur pb-2 z-10 flex items-center justify-between">
+                    <span>Evidence Feed</span>
+                    {results.length > 0 && <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs">{results.length}</span>}
+                  </h2>
+                  <div className="space-y-4">
+                    {results.length === 0 && isLoading ? (
+                      <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                          <div
+                            key={i}
+                            className="h-32 rounded-xl bg-muted animate-pulse"
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      results.map((result, index) => (
+                        <ResultCard key={result.id} result={result} index={index} />
+                      ))
+                    )}
                   </div>
-                ) : (
-                  results.map((result, index) => (
-                    <ResultCard key={result.id} result={result} index={index} />
-                  ))
-                )}
+                </div>
               </div>
             </div>
           )}
         </main>
-
-        {/* Footer */}
-        <footer className="border-t border-border mt-12">
-          <div className="container max-w-7xl mx-auto px-4 py-6">
-            <p className="text-xs text-muted-foreground text-center">
-              SignalSearch v0.1.1 — Aggregating high-signal AI/ML sources with Claude-powered synthesis
-            </p>
-          </div>
-        </footer>
       </div>
     </TooltipProvider>
   )

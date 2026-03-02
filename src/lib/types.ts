@@ -38,7 +38,14 @@ export interface SearchResult {
 export type TimeRange = "24h" | "week" | "month" | "year" | "all";
 
 export interface SearchQuery {
-  query: string;
+  intention: string;
+  keywords: string;
+  useSynonyms?: boolean;
+  synthesisConfig?: {
+    enabled: boolean;
+    format: string;
+    persona: string;
+  };
   sources?: {
     exa?: boolean;
     hackerNews?: boolean;

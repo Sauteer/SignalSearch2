@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ExternalLink, Clock, TrendingUp, MessageSquare, Heart } from "lucide-react"
+import { ExternalLink, Clock, TrendingUp, ChevronDown, ChevronUp, Heart } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SearchResult } from "@/lib/types"
@@ -31,6 +31,7 @@ const sourceTypeLabels = {
 }
 
 export function ResultCard({ result, index, className }: ResultCardProps) {
+  const [isExpanded, setIsExpanded] = React.useState(false)
   const recencyLabel = getRecencyLabel(result.publishedAt)
 
   return (
@@ -56,20 +57,35 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
               <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
             </div>
 
-            {/* Snippet */}
+            {/* Snippet / Expanded Content */}
             {result.snippet && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2 cursor-help">
-                    {result.snippet}
-                  </p>
-                </TooltipTrigger>
-                {result.rawContent && (
-                  <TooltipContent side="bottom" className="max-w-md max-h-48 overflow-auto text-xs">
-                    <div className="whitespace-pre-wrap">{result.rawContent.slice(0, 500)}...</div>
-                  </TooltipContent>
+              <div className="mb-3">
+                <p className={cn(
+                  "text-xs text-muted-foreground",
+                  !isExpanded && "line-clamp-2"
+                )}>
+                  {isExpanded && result.rawContent ? result.rawContent : result.snippet}
+                </p>
+
+                {(result.rawContent || result.snippet.length > 150) && (
+                  <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="flex items-center gap-1 mt-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    {isExpanded ? (
+                      <>
+                        <ChevronUp className="h-3 w-3" />
+                        Show less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-3 w-3" />
+                        Show more
+                      </>
+                    )}
+                  </button>
                 )}
-              </Tooltip>
+              </div>
             )}
 
             {/* Meta info */}

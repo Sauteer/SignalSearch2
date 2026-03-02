@@ -11,6 +11,10 @@ interface AdvancedFiltersProps {
     onTimeRangeChange: (value: TimeRange) => void;
     specificSources: NonNullable<SearchQuery["specificSources"]>;
     onSpecificSourcesChange: (sources: NonNullable<SearchQuery["specificSources"]>) => void;
+    synthesisConfig: NonNullable<SearchQuery["synthesisConfig"]>;
+    onSynthesisConfigChange: (config: NonNullable<SearchQuery["synthesisConfig"]>) => void;
+    useSynonyms: boolean;
+    onUseSynonymsChange: (useSynonyms: boolean) => void;
 }
 
 export function AdvancedFilters({
@@ -18,6 +22,10 @@ export function AdvancedFilters({
     onTimeRangeChange,
     specificSources,
     onSpecificSourcesChange,
+    synthesisConfig,
+    onSynthesisConfigChange,
+    useSynonyms,
+    onUseSynonymsChange,
 }: AdvancedFiltersProps) {
     const handleToggle = (
         category: keyof typeof specificSources,
@@ -60,22 +68,82 @@ export function AdvancedFilters({
                 </AccordionTrigger>
                 <AccordionContent className="pb-4 space-y-6">
 
-                    {/* Time Range Selector */}
-                    <div className="space-y-2 pt-2 border-t border-border">
-                        <h4 className="text-sm font-medium text-foreground">Timeframe</h4>
-                        <select
-                            title="Time Range"
-                            value={timeRange}
-                            onChange={(e) => onTimeRangeChange(e.target.value as TimeRange)}
-                            className="w-full sm:w-64 h-9 px-3 rounded-md border border-input bg-background text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        >
-                            <option value="24h">Past 24 Hours</option>
-                            <option value="week">Past Week</option>
-                            <option value="month">Past Month</option>
-                            <option value="year">Past Year</option>
-                            <option value="all">All Time</option>
-                        </select>
+                    {/* AI Settings Section */}
+                    <div className="space-y-4 pt-2 border-t border-border">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-foreground">AI Synthesis</h4>
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                                <span className="text-xs text-muted-foreground mr-1">Enable</span>
+                                <Checkbox
+                                    checked={synthesisConfig.enabled}
+                                    onCheckedChange={(c) => onSynthesisConfigChange({ ...synthesisConfig, enabled: !!c })}
+                                />
+                            </label>
+                        </div>
+
+                        {synthesisConfig.enabled && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs text-muted-foreground block">Format</label>
+                                    <select
+                                        title="Synthesis Format"
+                                        value={synthesisConfig.format}
+                                        onChange={(e) => onSynthesisConfigChange({ ...synthesisConfig, format: e.target.value })}
+                                        className="w-full h-8 px-2 rounded-md border border-input bg-background/50 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    >
+                                        <option value="detailed">Detailed Analysis</option>
+                                        <option value="brief">Brief TL;DR</option>
+                                        <option value="actionable">Actionable Takeaways</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs text-muted-foreground block">Persona</label>
+                                    <select
+                                        title="Synthesis Persona"
+                                        value={synthesisConfig.persona}
+                                        onChange={(e) => onSynthesisConfigChange({ ...synthesisConfig, persona: e.target.value })}
+                                        className="w-full h-8 px-2 rounded-md border border-input bg-background/50 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    >
+                                        <option value="expert">Technical Expert</option>
+                                        <option value="eli5">Explain Like I'm 5</option>
+                                        <option value="academic">Academic Researcher</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border">
+                        {/* Time Range Selector */}
+                        <div className="space-y-2">
+                            <h4 className="text-sm font-medium text-foreground">Timeframe</h4>
+                            <select
+                                title="Time Range"
+                                value={timeRange}
+                                onChange={(e) => onTimeRangeChange(e.target.value as TimeRange)}
+                                className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            >
+                                <option value="24h">Past 24 Hours</option>
+                                <option value="week">Past Week</option>
+                                <option value="month">Past Month</option>
+                                <option value="year">Past Year</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+
+                        {/* Keyword Enhancements */}
+                        <div className="space-y-2">
+                            <h4 className="text-sm font-medium text-foreground">Keyword Search</h4>
+                            <label className="flex items-center space-x-2 cursor-pointer mt-3">
+                                <Checkbox
+                                    checked={useSynonyms}
+                                    onCheckedChange={(c) => onUseSynonymsChange(!!c)}
+                                />
+                                <span className="text-sm text-muted-foreground">Automatically inject AI-generated synonyms</span>
+                            </label>
+                        </div>
+                    </div>
+
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border">
                         {/* Exa Domains Array */}

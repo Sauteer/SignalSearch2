@@ -4,7 +4,7 @@ import { searchHackerNews, searchHackerNewsByDate } from "@/lib/fetchers/hackern
 import { searchReddit } from "@/lib/fetchers/reddit";
 import { fetchYouTube } from "@/lib/fetchers/youtube";
 import { fetchSocial } from "@/lib/fetchers/social";
-import { synthesizeWithOpenRouterStream } from "@/lib/openrouter";
+import { synthesizeWithOpenRouterStream, generateSynonyms } from "@/lib/openrouter";
 import { sortByScore } from "@/lib/scoring";
 import { SearchResult, RawSignal, TimeRange } from "@/lib/types";
 
@@ -12,7 +12,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface SearchBody {
-  query: string;
+  intention: string;
+  keywords: string;
+  useSynonyms?: boolean;
+  synthesisConfig?: {
+    enabled: boolean;
+    format: string;
+    persona: string;
+  };
   sources?: {
     exa?: boolean;
     hackerNews?: boolean;
@@ -32,11 +39,15 @@ interface SearchBody {
 export async function POST(request: NextRequest) {
   try {
     const body: SearchBody = await request.json();
-    const { query, sources, timeRange, specificSources, maxResults = 10 } = body;
+    const { intention, keywords, sources, timeRange, specificSources, useSynonyms, synthesisConfig, maxResults = 10 } = body;
 
-    if (!query || typeof query !== "string") {
-      return NextResponse.json({ error: "Query is required" }, { status: 400 });
+    // We now require either an intention or keywords (or both)
+    if (!intention?.trim() && !keywords?.trim()) {
+      return NextResponse.json({ error: "Intention or Keywords required" }, { status: 400 });
     }
+
+    // For APIs that need a single generic query string
+    const fallbackQuery = intention?.trim() || keywords?.trim() || "";
 
     // Get API keys from environment
     const exaApiKey = process.env.EXA_API_KEY;
@@ -54,25 +65,35 @@ export async function POST(request: NextRequest) {
     // Concurrent fan-out to all sources
     const searchPromises: Promise<SearchResult[] | RawSignal[]>[] = [];
 
+    // Exa supports semantic search, so it shines with Intention. If no intention, use keywords.
     if (enabledSources.exa && exaApiKey) {
-      searchPromises.push(searchExa(query, exaApiKey, maxResults, timeRange, specificSources?.exaDomains));
+      searchPromises.push(searchExa(fallbackQuery, exaApiKey, maxResults, timeRange, specificSources?.exaDomains));
+    }
+
+    // Lexical (strict keyword) APIs. They perform poorly with full semantic sentences.
+    let lexicalQuery = keywords?.trim() || intention?.trim() || "";
+
+    // Conditionally generate synonyms for the Lexical APIs
+    if (useSynonyms && openRouterApiKey && keywords?.trim()) {
+      lexicalQuery = await generateSynonyms(keywords.trim(), intention?.trim() || "", openRouterApiKey);
     }
 
     if (enabledSources.hackerNews) {
-      searchPromises.push(searchHackerNews(query, maxResults, timeRange));
-      searchPromises.push(searchHackerNewsByDate(query, Math.ceil(maxResults / 2), timeRange));
+      searchPromises.push(searchHackerNews(lexicalQuery, maxResults, timeRange));
+      searchPromises.push(searchHackerNewsByDate(lexicalQuery, Math.ceil(maxResults / 2), timeRange));
     }
 
     if (enabledSources.reddit) {
-      searchPromises.push(searchReddit(query, maxResults, timeRange, specificSources?.subreddits));
+      searchPromises.push(searchReddit(lexicalQuery, maxResults, timeRange, specificSources?.subreddits));
     }
 
     if (enabledSources.youtube) {
-      searchPromises.push(fetchYouTube(query, maxResults, timeRange, specificSources?.youtubeChannels));
+      searchPromises.push(fetchYouTube(lexicalQuery, maxResults, timeRange, specificSources?.youtubeChannels));
     }
 
+    // Social works best with keywords too
     if (enabledSources.social) {
-      searchPromises.push(fetchSocial(query, maxResults, timeRange));
+      searchPromises.push(fetchSocial(lexicalQuery, maxResults, timeRange));
     }
 
     // Wait for all searches with Promise.allSettled
@@ -110,34 +131,34 @@ export async function POST(request: NextRequest) {
     const scoredResults = sortByScore(uniqueResults);
     const topResults = scoredResults.slice(0, maxResults);
 
-    // If no OpenRouter API key, return results without synthesis
-    if (!openRouterApiKey) {
+    // If no OpenRouter API key, OR if synthesis is explicitly disabled by user config, return results
+    if (!openRouterApiKey || synthesisConfig?.enabled === false) {
       return NextResponse.json({
         results: topResults,
-        synthesis: "OpenRouter API key not configured. Results returned without synthesis.",
-        query,
+        synthesis: "AI synthesis disabled.",
+        query: fallbackQuery,
         timestamp: new Date(),
         totalResults: uniqueResults.length,
       });
     }
 
-    // Collect full synthesis first (non-streaming, compatible with Netlify serverless)
+    // Pass the config into the OpenRouter streaming fetcher
     let synthesis = "";
     try {
       for await (const chunk of synthesizeWithOpenRouterStream(
         topResults,
-        query,
-        openRouterApiKey
+        fallbackQuery,
+        openRouterApiKey,
+        synthesisConfig
       )) {
         synthesis += chunk;
       }
     } catch (synthesisError) {
       console.error("Synthesis error:", synthesisError);
-      // Return results even if synthesis fails
       return NextResponse.json({
         results: topResults,
         synthesis: "Synthesis failed. Showing raw results only.",
-        query,
+        query: fallbackQuery,
         timestamp: new Date(),
         totalResults: uniqueResults.length,
       });
@@ -146,7 +167,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       results: topResults,
       synthesis,
-      query,
+      query: fallbackQuery,
       timestamp: new Date(),
       totalResults: uniqueResults.length,
     });
