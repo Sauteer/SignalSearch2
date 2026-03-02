@@ -1,16 +1,27 @@
-import { SearchResult, HNSearchResult } from "../types";
+import { SearchResult, HNSearchResult, TimeRange } from "../types";
 import { SEARCH_SOURCES } from "@/config/sources.config";
 
 const HN_ALGOLIA_API = "https://hn.algolia.com/api/v1";
 
 export async function searchHackerNews(
   query: string,
-  maxResults: number = 10
+  maxResults: number = 10,
+  timeRange?: TimeRange
 ): Promise<SearchResult[]> {
   try {
     const { minPoints, maxAgeDays } = SEARCH_SOURCES.hackerNews;
+
+    let daysToSubtract: number = maxAgeDays;
+    if (timeRange) {
+      if (timeRange === "24h") daysToSubtract = 1;
+      else if (timeRange === "week") daysToSubtract = 7;
+      else if (timeRange === "month") daysToSubtract = 30;
+      else if (timeRange === "year") daysToSubtract = 365;
+      else if (timeRange === "all") daysToSubtract = 3650; // 10 years
+    }
+
     const minTimestamp = Math.floor(
-      (Date.now() - maxAgeDays * 24 * 60 * 60 * 1000) / 1000
+      (Date.now() - daysToSubtract * 24 * 60 * 60 * 1000) / 1000
     );
 
     // Search both stories and posts
@@ -58,12 +69,23 @@ export async function searchHackerNews(
 
 export async function searchHackerNewsByDate(
   query: string,
-  maxResults: number = 10
+  maxResults: number = 10,
+  timeRange?: TimeRange
 ): Promise<SearchResult[]> {
   try {
     const { minPoints, maxAgeDays } = SEARCH_SOURCES.hackerNews;
+
+    let daysToSubtract: number = maxAgeDays;
+    if (timeRange) {
+      if (timeRange === "24h") daysToSubtract = 1;
+      else if (timeRange === "week") daysToSubtract = 7;
+      else if (timeRange === "month") daysToSubtract = 30;
+      else if (timeRange === "year") daysToSubtract = 365;
+      else if (timeRange === "all") daysToSubtract = 3650; // 10 years
+    }
+
     const minTimestamp = Math.floor(
-      (Date.now() - maxAgeDays * 24 * 60 * 60 * 1000) / 1000
+      (Date.now() - daysToSubtract * 24 * 60 * 60 * 1000) / 1000
     );
 
     // Search by date (recency) instead of relevance

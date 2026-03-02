@@ -1,4 +1,4 @@
-import { SearchResult, ExaSearchResult } from "../types";
+import { SearchResult, ExaSearchResult, TimeRange } from "../types";
 import { SEARCH_SOURCES } from "@/config/sources.config";
 
 const EXA_API_URL = "https://api.exa.ai/search";
@@ -6,12 +6,36 @@ const EXA_API_URL = "https://api.exa.ai/search";
 export async function searchExa(
   query: string,
   apiKey: string,
-  maxResults: number = 10
+  maxResults: number = 10,
+  timeRange?: TimeRange,
+  specificDomains?: string[]
 ): Promise<SearchResult[]> {
   if (!apiKey) {
     console.warn("Exa API key not configured, skipping Exa search");
     return [];
   }
+
+  let startPublishedDate: string | undefined;
+  if (timeRange && timeRange !== "all") {
+    const now = new Date();
+    switch (timeRange) {
+      case "24h":
+        now.setHours(now.getHours() - 24);
+        break;
+      case "week":
+        now.setDate(now.getDate() - 7);
+        break;
+      case "month":
+        now.setMonth(now.getMonth() - 1);
+        break;
+      case "year":
+        now.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+    startPublishedDate = now.toISOString();
+  }
+
+  const includeDomains = specificDomains?.length ? specificDomains : SEARCH_SOURCES.exaDomains;
 
   try {
     const response = await fetch(EXA_API_URL, {
@@ -30,7 +54,8 @@ export async function searchExa(
             maxCharacters: 2000,
           },
         },
-        includeDomains: SEARCH_SOURCES.exaDomains,
+        includeDomains,
+        ...(startPublishedDate ? { startPublishedDate } : {}),
       }),
     });
 
@@ -41,7 +66,7 @@ export async function searchExa(
     }
 
     const data = await response.json();
-    
+
     if (!data.results || !Array.isArray(data.results)) {
       return [];
     }

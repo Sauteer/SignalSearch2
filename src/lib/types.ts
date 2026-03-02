@@ -35,6 +35,8 @@ export interface SearchResult {
   comments?: number;
 }
 
+export type TimeRange = "24h" | "week" | "month" | "year" | "all";
+
 export interface SearchQuery {
   query: string;
   sources?: {
@@ -45,6 +47,12 @@ export interface SearchQuery {
     social?: boolean;
   };
   maxResults?: number;
+  timeRange?: TimeRange;
+  specificSources?: {
+    exaDomains?: string[];
+    subreddits?: string[];
+    youtubeChannels?: string[];
+  };
   dateRange?: {
     from: Date;
     to: Date;

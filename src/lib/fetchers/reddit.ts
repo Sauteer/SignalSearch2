@@ -1,14 +1,16 @@
-import { SearchResult, RedditSearchResult } from "../types";
+import { SearchResult, RedditSearchResult, TimeRange } from "../types";
 import { SEARCH_SOURCES } from "@/config/sources.config";
 
 const REDDIT_API = "https://www.reddit.com";
 
 export async function searchReddit(
   query: string,
-  maxResults: number = 10
+  maxResults: number = 10,
+  timeRange?: TimeRange,
+  specificSubreddits?: string[]
 ): Promise<SearchResult[]> {
   try {
-    const subreddits = SEARCH_SOURCES.subreddits;
+    const subreddits = specificSubreddits?.length ? specificSubreddits : SEARCH_SOURCES.subreddits;
     const allResults: SearchResult[] = [];
 
     // Search across configured subreddits
@@ -19,7 +21,15 @@ export async function searchReddit(
         searchUrl.searchParams.set("restrict_sr", "1");
         searchUrl.searchParams.set("sort", "relevance");
         searchUrl.searchParams.set("limit", String(Math.ceil(maxResults / 3)));
-        searchUrl.searchParams.set("t", "month"); // Past month
+        let tParam = "month";
+        if (timeRange) {
+          if (timeRange === "24h") tParam = "day";
+          else if (timeRange === "week") tParam = "week";
+          else if (timeRange === "month") tParam = "month";
+          else if (timeRange === "year") tParam = "year";
+          else if (timeRange === "all") tParam = "all";
+        }
+        searchUrl.searchParams.set("t", tParam);
 
         const response = await fetch(searchUrl.toString(), {
           headers: {
@@ -94,7 +104,7 @@ export async function getRedditPostComments(
     }
 
     const data = await response.json();
-    
+
     if (Array.isArray(data) && data[1]?.data?.children) {
       return data[1].data.children
         .filter((child: { kind: string }) => child.kind === "t1")

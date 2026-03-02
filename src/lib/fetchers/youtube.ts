@@ -3,7 +3,8 @@
  * Fetches video metadata and transcriptions from YouTube
  */
 
-import { RawSignal, SourceType } from "../types"
+import { RawSignal, SourceType, TimeRange } from "../types"
+import { SEARCH_SOURCES } from "@/config/sources.config"
 
 interface YouTubeSearchResult {
   kind: string
@@ -40,7 +41,9 @@ interface YouTubeSearchResponse {
 
 export async function fetchYouTube(
   query: string,
-  maxResults: number = 10
+  maxResults: number = 10,
+  timeRange?: TimeRange,
+  specificChannels?: string[]
 ): Promise<RawSignal[]> {
   const apiKey = process.env.YOUTUBE_API_KEY
 
@@ -59,7 +62,28 @@ export async function fetchYouTube(
     searchUrl.searchParams.set("type", "video")
     searchUrl.searchParams.set("maxResults", String(maxResults))
     searchUrl.searchParams.set("order", "relevance")
-    searchUrl.searchParams.set("videoEmbeddable", "true")
+    // Time range filter
+    if (timeRange && timeRange !== "all") {
+      const now = new Date()
+      switch (timeRange) {
+        case "24h": now.setHours(now.getHours() - 24); break;
+        case "week": now.setDate(now.getDate() - 7); break;
+        case "month": now.setMonth(now.getMonth() - 1); break;
+        case "year": now.setFullYear(now.getFullYear() - 1); break;
+      }
+      searchUrl.searchParams.set("publishedAfter", now.toISOString())
+    }
+
+    // Since YouTube only allows passing 1 channelId to /search, if the user selected multiple channels
+    // we just let the query search generally but append channel names to the query if possible, or
+    // we just fetch generally. To strictly filter by selected channels from the UI config, we could launch 
+    // parallel requests per channel, but that eats quota fast.
+    // For now, if the array is narrow (1 channel), we can use channelId.
+    const activeChannels = specificChannels?.length ? specificChannels : SEARCH_SOURCES.youtubeChannels
+    if (activeChannels.length === 1) {
+      searchUrl.searchParams.set("channelId", activeChannels[0])
+    }
+
     searchUrl.searchParams.set("key", apiKey)
 
     const searchResponse = await fetch(searchUrl.toString())
@@ -99,7 +123,7 @@ export async function fetchYouTube(
       string,
       { viewCount: number; likeCount: number; commentCount: number }
     >()
-    
+
     if (statsData.items) {
       for (const item of statsData.items) {
         statsMap.set(item.id, {

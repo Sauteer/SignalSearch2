@@ -3,7 +3,7 @@
  * Uses Exa AI to search for relevant X/Twitter posts
  */
 
-import { RawSignal, SourceType } from "../types"
+import { RawSignal, SourceType, TimeRange } from "../types"
 
 interface ExaTweetResult {
   title: string
@@ -16,13 +16,26 @@ interface ExaTweetResult {
 
 export async function fetchSocial(
   query: string,
-  maxResults: number = 10
+  maxResults: number = 10,
+  timeRange?: TimeRange
 ): Promise<RawSignal[]> {
   const exaApiKey = process.env.EXA_API_KEY
 
   if (!exaApiKey) {
     console.warn("Exa API key not configured, skipping social fetch")
     return []
+  }
+
+  let startPublishedDate: string | undefined;
+  if (timeRange && timeRange !== "all") {
+    const now = new Date();
+    switch (timeRange) {
+      case "24h": now.setHours(now.getHours() - 24); break;
+      case "week": now.setDate(now.getDate() - 7); break;
+      case "month": now.setMonth(now.getMonth() - 1); break;
+      case "year": now.setFullYear(now.getFullYear() - 1); break;
+    }
+    startPublishedDate = now.toISOString();
   }
 
   try {
@@ -42,6 +55,7 @@ export async function fetchSocial(
             maxCharacters: 1000,
           },
         },
+        ...(startPublishedDate ? { startPublishedDate } : {}),
       }),
     })
 

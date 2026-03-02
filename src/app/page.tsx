@@ -6,7 +6,9 @@ import { SourceFilter, type SourceFilters } from "@/components/SourceFilter"
 import { ResultCard } from "@/components/ResultCard"
 import { SynthesisPanel } from "@/components/SynthesisPanel"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { SearchResult } from "@/lib/types"
+import { AdvancedFilters } from "@/components/AdvancedFilters"
+import { SearchResult, TimeRange, SearchQuery } from "@/lib/types"
+import { SEARCH_SOURCES } from "@/config/sources.config"
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = React.useState(false)
@@ -21,6 +23,14 @@ export default function HomePage() {
     reddit: true,
     youtube: false,
     social: false,
+  })
+
+  const [timeRange, setTimeRange] = React.useState<TimeRange>("month")
+
+  const [specificSources, setSpecificSources] = React.useState<NonNullable<SearchQuery["specificSources"]>>({
+    exaDomains: [...SEARCH_SOURCES.exaDomains],
+    subreddits: [...SEARCH_SOURCES.subreddits],
+    youtubeChannels: [...SEARCH_SOURCES.youtubeChannels],
   })
 
   const handleSearch = async (searchQuery: string) => {
@@ -39,6 +49,8 @@ export default function HomePage() {
         body: JSON.stringify({
           query: searchQuery,
           sources: filters,
+          timeRange,
+          specificSources,
           maxResults: 10,
         }),
       })
@@ -130,6 +142,12 @@ export default function HomePage() {
             <SearchBar onSearch={handleSearch} isLoading={isLoading} />
             <div className="mt-3">
               <SourceFilter filters={filters} onFilterChange={setFilters} />
+              <AdvancedFilters
+                timeRange={timeRange}
+                onTimeRangeChange={setTimeRange}
+                specificSources={specificSources}
+                onSpecificSourcesChange={setSpecificSources}
+              />
             </div>
           </div>
         </header>

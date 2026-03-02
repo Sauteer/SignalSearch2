@@ -6,7 +6,7 @@ import { fetchYouTube } from "@/lib/fetchers/youtube";
 import { fetchSocial } from "@/lib/fetchers/social";
 import { synthesizeWithOpenRouterStream } from "@/lib/openrouter";
 import { sortByScore } from "@/lib/scoring";
-import { SearchResult, RawSignal } from "@/lib/types";
+import { SearchResult, RawSignal, TimeRange } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,13 +20,19 @@ interface SearchBody {
     youtube?: boolean;
     social?: boolean;
   };
+  timeRange?: TimeRange;
+  specificSources?: {
+    exaDomains?: string[];
+    subreddits?: string[];
+    youtubeChannels?: string[];
+  };
   maxResults?: number;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: SearchBody = await request.json();
-    const { query, sources, maxResults = 10 } = body;
+    const { query, sources, timeRange, specificSources, maxResults = 10 } = body;
 
     if (!query || typeof query !== "string") {
       return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -49,24 +55,24 @@ export async function POST(request: NextRequest) {
     const searchPromises: Promise<SearchResult[] | RawSignal[]>[] = [];
 
     if (enabledSources.exa && exaApiKey) {
-      searchPromises.push(searchExa(query, exaApiKey, maxResults));
+      searchPromises.push(searchExa(query, exaApiKey, maxResults, timeRange, specificSources?.exaDomains));
     }
 
     if (enabledSources.hackerNews) {
-      searchPromises.push(searchHackerNews(query, maxResults));
-      searchPromises.push(searchHackerNewsByDate(query, Math.ceil(maxResults / 2)));
+      searchPromises.push(searchHackerNews(query, maxResults, timeRange));
+      searchPromises.push(searchHackerNewsByDate(query, Math.ceil(maxResults / 2), timeRange));
     }
 
     if (enabledSources.reddit) {
-      searchPromises.push(searchReddit(query, maxResults));
+      searchPromises.push(searchReddit(query, maxResults, timeRange, specificSources?.subreddits));
     }
 
     if (enabledSources.youtube) {
-      searchPromises.push(fetchYouTube(query, maxResults));
+      searchPromises.push(fetchYouTube(query, maxResults, timeRange, specificSources?.youtubeChannels));
     }
 
     if (enabledSources.social) {
-      searchPromises.push(fetchSocial(query, maxResults));
+      searchPromises.push(fetchSocial(query, maxResults, timeRange));
     }
 
     // Wait for all searches with Promise.allSettled
