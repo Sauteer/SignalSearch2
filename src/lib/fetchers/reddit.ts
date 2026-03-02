@@ -1,17 +1,39 @@
-import { SearchResult, RedditSearchResult, TimeRange } from "../types";
+import { SearchResult, RedditSearchResult, TimeRange, TimeRangeValue } from "../types";
 import { SEARCH_SOURCES } from "@/config/sources.config";
+import { getDateRange } from "../utils";
 
 const REDDIT_API = "https://www.reddit.com";
 
 export async function searchReddit(
   query: string,
   maxResults: number = 10,
-  timeRange?: TimeRange,
+  timeRange?: TimeRange | TimeRangeValue,
   specificSubreddits?: string[]
 ): Promise<SearchResult[]> {
   try {
     const subreddits = specificSubreddits?.length ? specificSubreddits : SEARCH_SOURCES.subreddits;
     const allResults: SearchResult[] = [];
+
+    // Parse the range
+    const { start, end } = getDateRange(timeRange);
+
+    // Determine the 't' parameter for Reddit based on the 'end' (the older bound)
+    // We want to fetch enough to cover the window, then filter inside.
+    let tParam = "month";
+    if (Array.isArray(timeRange)) {
+      const outer = timeRange[1];
+      if (outer === "24h") tParam = "day";
+      else if (outer === "week") tParam = "week";
+      else if (outer === "month") tParam = "month";
+      else if (outer === "year") tParam = "year";
+      else if (outer === "all") tParam = "all";
+    } else if (timeRange) {
+      if (timeRange === "24h") tParam = "day";
+      else if (timeRange === "week") tParam = "week";
+      else if (timeRange === "month") tParam = "month";
+      else if (timeRange === "year") tParam = "year";
+      else if (timeRange === "all") tParam = "all";
+    }
 
     // Search across configured subreddits
     for (const subreddit of subreddits.slice(0, 3)) { // Limit to 3 subreddits to avoid rate limiting
@@ -20,15 +42,7 @@ export async function searchReddit(
         searchUrl.searchParams.set("q", query);
         searchUrl.searchParams.set("restrict_sr", "1");
         searchUrl.searchParams.set("sort", "relevance");
-        searchUrl.searchParams.set("limit", String(Math.ceil(maxResults / 3)));
-        let tParam = "month";
-        if (timeRange) {
-          if (timeRange === "24h") tParam = "day";
-          else if (timeRange === "week") tParam = "week";
-          else if (timeRange === "month") tParam = "month";
-          else if (timeRange === "year") tParam = "year";
-          else if (timeRange === "all") tParam = "all";
-        }
+        searchUrl.searchParams.set("limit", String(Math.ceil(maxResults / 1))); // Fetch more to allow for filtering
         searchUrl.searchParams.set("t", tParam);
 
         const response = await fetch(searchUrl.toString(), {
@@ -47,7 +61,17 @@ export async function searchReddit(
         if (data.data?.children && Array.isArray(data.data.children)) {
           const results = data.data.children
             .map((child: { data: RedditSearchResult }) => child.data)
-            .filter((post: RedditSearchResult) => post.title)
+            .filter((post: RedditSearchResult) => {
+              if (!post.title) return false;
+              if (!start && !end) return true;
+
+              const postDate = post.created_utc * 1000;
+              // Must be OLDER than 'start' (the newer bound) and NEWER than 'end' (the older bound)
+              if (start && postDate > start.getTime()) return false;
+              if (end && postDate < end.getTime()) return false;
+
+              return true;
+            })
             .map((post: RedditSearchResult) => ({
               id: `reddit-${post.id}`,
               title: post.title,

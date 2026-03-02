@@ -1,13 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { ExternalLink, Clock, TrendingUp, ChevronDown, ChevronUp, Heart, Globe, Newspaper, MessageSquare, Youtube, Twitter } from "lucide-react"
+import { ExternalLink, Clock, TrendingUp, ChevronDown, ChevronUp, Heart, Globe, Newspaper, MessageSquare, Youtube, Twitter, Bookmark } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { SearchResult } from "@/lib/types"
 import { getRecencyLabel } from "@/lib/scoring"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/components/providers/AuthProvider"
+import { createClient } from "@/lib/supabase-client"
+import { Button } from "@/components/ui/button"
 
 interface ResultCardProps {
   result: SearchResult
@@ -41,8 +44,38 @@ const sourceTypeLabels = {
 
 export function ResultCard({ result, index, className }: ResultCardProps) {
   const [isExpanded, setIsExpanded] = React.useState(false)
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [isSaved, setIsSaved] = React.useState(false)
+  const { user } = useAuth()
+  const supabase = createClient()
+
   const recencyLabel = getRecencyLabel(result.publishedAt)
   const Icon = SourceIcons[result.sourceType]
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!user) return
+
+    setIsSaving(true)
+    const { error } = await supabase
+      .from('saved_sources')
+      .insert({
+        user_id: user.id,
+        title: result.title,
+        url: result.url,
+        content: result.rawContent || result.snippet,
+        metadata: {
+          sourceType: result.sourceType,
+          sourceName: result.source,
+          score: result.finalScore
+        }
+      })
+
+    setIsSaving(false)
+    if (!error) setIsSaved(true)
+  }
 
   return (
     <Card className={cn("group transition-all duration-200 hover:-translate-y-[2px] hover:border-primary/60 border-border bg-card shadow-none hover:shadow-lg hover:shadow-primary/5", className)}>
@@ -53,15 +86,30 @@ export function ResultCard({ result, index, className }: ResultCardProps) {
             <Icon className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0 pt-0.5">
-            <a
-              href={result.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[0.95rem] leading-tight font-semibold text-foreground hover:text-primary transition-colors line-clamp-2 pr-4 relative"
-            >
-              {result.title}
-              <ExternalLink className="absolute -right-2 top-0.5 h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-            </a>
+            <div className="flex items-start justify-between gap-2">
+              <a
+                href={result.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[0.95rem] leading-tight font-semibold text-foreground hover:text-primary transition-colors line-clamp-2"
+              >
+                {result.title}
+              </a>
+              {user && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-8 w-8 -mt-1 -mr-2 shrink-0 transition-colors",
+                    isSaved ? "text-primary" : "text-muted-foreground hover:text-primary"
+                  )}
+                  onClick={handleSave}
+                  disabled={isSaving || isSaved}
+                >
+                  <Bookmark className={cn("h-4 w-4", isSaved && "fill-current")} />
+                </Button>
+              )}
+            </div>
             <div className="text-xs text-muted-foreground mt-1 truncate max-w-[80%]">
               {result.source}
             </div>

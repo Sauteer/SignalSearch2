@@ -7,8 +7,9 @@ import { ResultCard } from "@/components/ResultCard"
 import { SynthesisPanel } from "@/components/SynthesisPanel"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AdvancedFilters } from "@/components/AdvancedFilters"
-import { SearchResult, TimeRange, SearchQuery } from "@/lib/types"
+import { SearchResult, TimeRange, TimeRangeValue, SearchQuery } from "@/lib/types"
 import { SEARCH_SOURCES } from "@/config/sources.config"
+import { UserMenu } from "@/components/UserMenu"
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = React.useState(false)
@@ -26,7 +27,7 @@ export default function HomePage() {
     social: false,
   })
 
-  const [timeRange, setTimeRange] = React.useState<TimeRange>("month")
+  const [timeRange, setTimeRange] = React.useState<TimeRangeValue>(["24h", "all"])
 
   const [specificSources, setSpecificSources] = React.useState<NonNullable<SearchQuery["specificSources"]>>({
     exaDomains: [...SEARCH_SOURCES.exaDomains],
@@ -140,9 +141,13 @@ export default function HomePage() {
   return (
     <TooltipProvider>
       <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden relative">
+        <div className="absolute top-6 right-6 z-50">
+          <UserMenu />
+        </div>
+
         {/* Floating Global Command Bar Area */}
-        <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pt-8 pointer-events-auto">
-          <div className="w-full max-w-2xl px-4 flex flex-col items-center">
+        <div className="absolute top-0 left-0 right-0 z-40 flex flex-col items-center pt-8 pointer-events-auto">
+          <div className="w-full max-w-4xl px-4 flex flex-col items-center">
             {/* The Search interface is now absolute/floating at top center */}
             <div className="w-full relative group">
               {/* Optional backdrop blur behind search area */}

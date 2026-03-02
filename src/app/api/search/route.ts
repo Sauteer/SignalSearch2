@@ -6,7 +6,8 @@ import { fetchYouTube } from "@/lib/fetchers/youtube";
 import { fetchSocial } from "@/lib/fetchers/social";
 import { synthesizeWithOpenRouterStream, generateSynonyms } from "@/lib/openrouter";
 import { sortByScore } from "@/lib/scoring";
-import { SearchResult, RawSignal, TimeRange } from "@/lib/types";
+import { SearchResult, RawSignal, TimeRange, TimeRangeValue } from "@/lib/types";
+import { createClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ interface SearchBody {
     youtube?: boolean;
     social?: boolean;
   };
-  timeRange?: TimeRange;
+  timeRange?: TimeRange | TimeRangeValue;
   specificSources?: {
     exaDomains?: string[];
     subreddits?: string[];
@@ -49,9 +50,30 @@ export async function POST(request: NextRequest) {
     // For APIs that need a single generic query string
     const fallbackQuery = intention?.trim() || keywords?.trim() || "";
 
-    // Get API keys from environment
+    // Get user and profile from Supabase
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    let profile = null;
+
+    if (user) {
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      profile = data;
+    }
+
+    // Default API keys from environment
     const exaApiKey = process.env.EXA_API_KEY;
-    const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+
+    // User key overrides environment key if available
+    const openRouterApiKey = profile?.openrouter_key || process.env.OPENROUTER_API_KEY;
+
+    // Merge synthesis config with profile defaults
+    const finalSynthesisConfig = {
+      ...synthesisConfig,
+      enabled: synthesisConfig?.enabled !== false,
+      format: synthesisConfig?.format || "detailed",
+      persona: synthesisConfig?.persona || "expert",
+      model: profile?.selected_model || "openai/gpt-4o"
+    };
 
     // Default all sources to true if not specified
     const enabledSources = {
@@ -132,7 +154,7 @@ export async function POST(request: NextRequest) {
     const topResults = scoredResults.slice(0, maxResults);
 
     // If no OpenRouter API key, OR if synthesis is explicitly disabled by user config, return results
-    if (!openRouterApiKey || synthesisConfig?.enabled === false) {
+    if (!openRouterApiKey || finalSynthesisConfig.enabled === false) {
       return NextResponse.json({
         results: topResults,
         synthesis: "AI synthesis disabled.",
@@ -145,12 +167,12 @@ export async function POST(request: NextRequest) {
     // Pass the config into the OpenRouter streaming fetcher
     let synthesis = "";
     try {
-      console.log(`Starting synthesis with model: anthropic/claude-3.5-sonnet, query: ${fallbackQuery}`);
+      console.log(`Starting synthesis with model: ${finalSynthesisConfig.model}, query: ${fallbackQuery}`);
       for await (const chunk of synthesizeWithOpenRouterStream(
         topResults,
         fallbackQuery,
         openRouterApiKey,
-        synthesisConfig
+        finalSynthesisConfig
       )) {
         synthesis += chunk;
       }
@@ -162,7 +184,7 @@ export async function POST(request: NextRequest) {
       console.error("DETAILED Synthesis error:", {
         message: synthesisError instanceof Error ? synthesisError.message : String(synthesisError),
         stack: synthesisError instanceof Error ? synthesisError.stack : undefined,
-        config: synthesisConfig
+        config: finalSynthesisConfig
       });
       return NextResponse.json({
         results: topResults,

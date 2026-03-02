@@ -1,35 +1,31 @@
-import { SearchResult, HNSearchResult, TimeRange } from "../types";
+import { SearchResult, HNSearchResult, TimeRange, TimeRangeValue } from "../types";
 import { SEARCH_SOURCES } from "@/config/sources.config";
+import { getDateRange } from "../utils";
 
 const HN_ALGOLIA_API = "https://hn.algolia.com/api/v1";
 
 export async function searchHackerNews(
   query: string,
   maxResults: number = 10,
-  timeRange?: TimeRange
+  timeRange?: TimeRange | TimeRangeValue
 ): Promise<SearchResult[]> {
   try {
-    const { minPoints, maxAgeDays } = SEARCH_SOURCES.hackerNews;
+    const { minPoints } = SEARCH_SOURCES.hackerNews;
+    const { start, end } = getDateRange(timeRange);
 
-    let daysToSubtract: number = maxAgeDays;
-    if (timeRange) {
-      if (timeRange === "24h") daysToSubtract = 1;
-      else if (timeRange === "week") daysToSubtract = 7;
-      else if (timeRange === "month") daysToSubtract = 30;
-      else if (timeRange === "year") daysToSubtract = 365;
-      else if (timeRange === "all") daysToSubtract = 3650; // 10 years
+    let numericFilters = `points>=${minPoints}`;
+    if (end) {
+      numericFilters += `,created_at_i>=${Math.floor(end.getTime() / 1000)}`;
+    }
+    if (start) {
+      numericFilters += `,created_at_i<=${Math.floor(start.getTime() / 1000)}`;
     }
 
-    const minTimestamp = Math.floor(
-      (Date.now() - daysToSubtract * 24 * 60 * 60 * 1000) / 1000
-    );
-
-    // Search both stories and posts
     const searchUrl = new URL(`${HN_ALGOLIA_API}/search`);
     searchUrl.searchParams.set("query", query);
     searchUrl.searchParams.set("tags", "story");
     searchUrl.searchParams.set("hitsPerPage", String(maxResults));
-    searchUrl.searchParams.set("numericFilters", `points>=${minPoints},created_at_i>=${minTimestamp}`);
+    searchUrl.searchParams.set("numericFilters", numericFilters);
 
     const response = await fetch(searchUrl.toString());
 
@@ -54,8 +50,8 @@ export async function searchHackerNews(
         source: "Hacker News",
         sourceType: "hackernews" as const,
         publishedAt: hit.created_at ? new Date(hit.created_at) : null,
-        engagement: hit.points + hit.num_comments * 2, // Weight comments more
-        relevanceScore: Math.min(hit.points / 500, 1), // Normalize points to 0-1
+        engagement: hit.points + hit.num_comments * 2,
+        relevanceScore: Math.min(hit.points / 500, 1),
         finalScore: 0,
         author: hit.author,
         points: hit.points,
@@ -70,30 +66,25 @@ export async function searchHackerNews(
 export async function searchHackerNewsByDate(
   query: string,
   maxResults: number = 10,
-  timeRange?: TimeRange
+  timeRange?: TimeRange | TimeRangeValue
 ): Promise<SearchResult[]> {
   try {
-    const { minPoints, maxAgeDays } = SEARCH_SOURCES.hackerNews;
+    const { minPoints } = SEARCH_SOURCES.hackerNews;
+    const { start, end } = getDateRange(timeRange);
 
-    let daysToSubtract: number = maxAgeDays;
-    if (timeRange) {
-      if (timeRange === "24h") daysToSubtract = 1;
-      else if (timeRange === "week") daysToSubtract = 7;
-      else if (timeRange === "month") daysToSubtract = 30;
-      else if (timeRange === "year") daysToSubtract = 365;
-      else if (timeRange === "all") daysToSubtract = 3650; // 10 years
+    let numericFilters = `points>=${minPoints}`;
+    if (end) {
+      numericFilters += `,created_at_i>=${Math.floor(end.getTime() / 1000)}`;
+    }
+    if (start) {
+      numericFilters += `,created_at_i<=${Math.floor(start.getTime() / 1000)}`;
     }
 
-    const minTimestamp = Math.floor(
-      (Date.now() - daysToSubtract * 24 * 60 * 60 * 1000) / 1000
-    );
-
-    // Search by date (recency) instead of relevance
     const searchUrl = new URL(`${HN_ALGOLIA_API}/search_by_date`);
     searchUrl.searchParams.set("query", query);
     searchUrl.searchParams.set("tags", "story");
     searchUrl.searchParams.set("hitsPerPage", String(maxResults));
-    searchUrl.searchParams.set("numericFilters", `points>=${minPoints},created_at_i>=${minTimestamp}`);
+    searchUrl.searchParams.set("numericFilters", numericFilters);
 
     const response = await fetch(searchUrl.toString());
 

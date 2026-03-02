@@ -68,8 +68,11 @@ export function SourceFilter({ filters, onFilterChange }: SourceFilterProps) {
               className={cn(
                 "flex items-center gap-2 px-3 py-2 rounded-lg border border-border",
                 filters[id]
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-muted-foreground hover:bg-muted/30 border-transparent"
+                  ? id === "youtube"
+                    ? "bg-[#FF0000] text-white border-[#FF0000]"
+                    : "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent text-muted-foreground hover:bg-muted/30 border-transparent",
+                "focus-visible:ring-ring focus-visible:ring-2 outline-none"
               )}
             >
               <Icon className="h-4 w-4" />

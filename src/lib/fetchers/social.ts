@@ -1,9 +1,5 @@
-/**
- * X/Twitter social media fetcher
- * Uses Exa AI to search for relevant X/Twitter posts
- */
-
-import { RawSignal, SourceType, TimeRange } from "../types"
+import { RawSignal, SourceType, TimeRange, TimeRangeValue } from "../types"
+import { getDateRange } from "../utils"
 
 interface ExaTweetResult {
   title: string
@@ -17,7 +13,7 @@ interface ExaTweetResult {
 export async function fetchSocial(
   query: string,
   maxResults: number = 10,
-  timeRange?: TimeRange
+  timeRange?: TimeRange | TimeRangeValue
 ): Promise<RawSignal[]> {
   const exaApiKey = process.env.EXA_API_KEY
 
@@ -26,17 +22,9 @@ export async function fetchSocial(
     return []
   }
 
-  let startPublishedDate: string | undefined;
-  if (timeRange && timeRange !== "all") {
-    const now = new Date();
-    switch (timeRange) {
-      case "24h": now.setHours(now.getHours() - 24); break;
-      case "week": now.setDate(now.getDate() - 7); break;
-      case "month": now.setMonth(now.getMonth() - 1); break;
-      case "year": now.setFullYear(now.getFullYear() - 1); break;
-    }
-    startPublishedDate = now.toISOString();
-  }
+  const { start, end } = getDateRange(timeRange);
+  const startPublishedDate = end?.toISOString();
+  const endPublishedDate = start?.toISOString();
 
   try {
     // Use Exa to search X/Twitter with site filter
@@ -56,6 +44,7 @@ export async function fetchSocial(
           },
         },
         ...(startPublishedDate ? { startPublishedDate } : {}),
+        ...(endPublishedDate ? { endPublishedDate } : {}),
       }),
     })
 

@@ -1,5 +1,6 @@
-import { SearchResult, ExaSearchResult, TimeRange } from "../types";
+import { SearchResult, ExaSearchResult, TimeRange, TimeRangeValue } from "../types";
 import { SEARCH_SOURCES } from "@/config/sources.config";
+import { getDateRange } from "../utils";
 
 const EXA_API_URL = "https://api.exa.ai/search";
 
@@ -7,7 +8,7 @@ export async function searchExa(
   query: string,
   apiKey: string,
   maxResults: number = 10,
-  timeRange?: TimeRange,
+  timeRange?: TimeRange | TimeRangeValue,
   specificDomains?: string[]
 ): Promise<SearchResult[]> {
   if (!apiKey) {
@@ -15,25 +16,9 @@ export async function searchExa(
     return [];
   }
 
-  let startPublishedDate: string | undefined;
-  if (timeRange && timeRange !== "all") {
-    const now = new Date();
-    switch (timeRange) {
-      case "24h":
-        now.setHours(now.getHours() - 24);
-        break;
-      case "week":
-        now.setDate(now.getDate() - 7);
-        break;
-      case "month":
-        now.setMonth(now.getMonth() - 1);
-        break;
-      case "year":
-        now.setFullYear(now.getFullYear() - 1);
-        break;
-    }
-    startPublishedDate = now.toISOString();
-  }
+  const { start, end } = getDateRange(timeRange);
+  const startPublishedDate = end?.toISOString();
+  const endPublishedDate = start?.toISOString();
 
   const includeDomains = specificDomains?.length ? specificDomains : SEARCH_SOURCES.exaDomains;
 
@@ -56,6 +41,7 @@ export async function searchExa(
         },
         includeDomains,
         ...(startPublishedDate ? { startPublishedDate } : {}),
+        ...(endPublishedDate ? { endPublishedDate } : {}),
       }),
     });
 

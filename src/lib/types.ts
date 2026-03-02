@@ -36,6 +36,8 @@ export interface SearchResult {
 }
 
 export type TimeRange = "24h" | "week" | "month" | "year" | "all";
+export type TimeRangeValue = [TimeRange, TimeRange];
+
 
 export interface SearchQuery {
   intention: string;
@@ -54,7 +56,7 @@ export interface SearchQuery {
     social?: boolean;
   };
   maxResults?: number;
-  timeRange?: TimeRange;
+  timeRange?: TimeRange | TimeRangeValue;
   specificSources?: {
     exaDomains?: string[];
     subreddits?: string[];
