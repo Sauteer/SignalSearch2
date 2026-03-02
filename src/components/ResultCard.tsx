@@ -32,36 +32,39 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
 
   const Icon = SourceIcons[result.sourceType] || Globe
 
-  const highlightSnippet = (text: string, highlight?: string) => {
+  const highlightSnippet = (text: string, highlight?: string): React.ReactNode => {
     if (!text) return ""
     const targetWords = highlight?.trim()
     if (!targetWords) return <>{text}</>
 
-    // Extract alphanumeric words over 2 chars
+    // Escape regex special chars and extract words >= 2 chars
     const words = targetWords
       .split(/\s+/)
       .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
-      .filter(w => w.length > 2)
+      .filter(w => w.length >= 2)
+      .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // escape regex special chars
 
     if (words.length === 0) return <>{text}</>
 
-    // Match these exact words on boundaries (\b), ignoring case
     const regex = new RegExp(`\\b(${words.join('|')})\\b`, 'gi')
     const parts = text.split(regex)
 
     return (
       <>
-        {parts.map((part, i) => {
-          // Because regex has capture groups, every odd-indexed part in `split` is the captured match itself
-          if (i % 2 !== 0) {
-            return (
-              <mark key={i} className="bg-primary/20 text-primary rounded px-0.5 font-bold">
-                {part}
-              </mark>
-            )
-          }
-          return <React.Fragment key={i}>{part}</React.Fragment>
-        })}
+        {parts
+          .filter(part => part !== undefined && part !== null)
+          .map((part, i) => {
+            if (!part) return null
+            // Odd-indexed parts are capture group matches (the highlighted words)
+            if (i % 2 !== 0) {
+              return (
+                <mark key={i} className="bg-primary/20 text-primary rounded px-0.5 font-bold not-italic">
+                  {part}
+                </mark>
+              )
+            }
+            return part.length > 0 ? <React.Fragment key={i}>{part}</React.Fragment> : null
+          })}
       </>
     )
   }

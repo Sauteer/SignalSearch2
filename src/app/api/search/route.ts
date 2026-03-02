@@ -150,10 +150,9 @@ export async function POST(request: NextRequest) {
       return true;
     });
 
-    // Sort by custom scoring algorithm
-    const scoredResults = sortByScore(uniqueResults);
-    // Take more results upfront (2x) to allow for relevance sorting, then cut down
-    const topResults = scoredResults.slice(0, maxResults * 2).slice(0, maxResults);
+    // Sort by 4-signal scoring algorithm (keyword density, relevance, recency, engagement)
+    const scoredResults = sortByScore(uniqueResults, fallbackQuery);
+    const topResults = scoredResults.slice(0, maxResults);
 
     // Always use SSE streaming for consistent frontend handling
     const encoder = new TextEncoder();

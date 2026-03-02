@@ -14,7 +14,7 @@ export function getHoursSincePublication(publishedAt: Date | string | null): num
 
 /**
  * Calculate recency score using exponential decay
- * Score = e^(-λ * Δt) where Δt is hours since publication
+ * Score = e^(-λ * Δt) capped at 0.95 so recency never fully dominates
  */
 export function calculateRecencyScore(
   hoursSincePublication: number,
@@ -24,23 +24,20 @@ export function calculateRecencyScore(
     ? RECENCY_DECAY_LAMBDA * SOCIAL_SCORING.recencyDecayMultiplier
     : RECENCY_DECAY_LAMBDA;
 
-  return Math.exp(-lambda * hoursSincePublication);
+  return Math.min(0.95, Math.exp(-lambda * hoursSincePublication));
 }
 
 /**
  * Calculate engagement score using logarithmic scaling
- * Score = ln(engagement + 1)
  */
 export function calculateEngagementScore(
   engagement: number,
   isSocialSource: boolean = false
 ): number {
   const score = Math.log(engagement + 1);
-
   if (isSocialSource) {
     return score * SOCIAL_SCORING.engagementBoostMultiplier;
   }
-
   return score;
 }
 
@@ -53,57 +50,142 @@ export function normalizeScore(score: number, min: number, max: number): number 
 }
 
 /**
- * Calculate final score for a search result
- * Score = (Relevance × W_rel) + (e^(-λΔt) × W_rec) + (ln(Engagement+1) × W_eng)
+ * Calculate keyword density score: how many query words appear in title + snippet.
+ * Title matches are worth 2x snippet matches (more signal in title).
+ * Returns a 0-1 score normalised against maxDensity across the result set.
  */
-export function calculateFinalScore(
+export function calculateKeywordDensity(
   result: SearchResult,
-  allResults: SearchResult[]
+  queryWords: string[],
+  maxDensity: number
 ): number {
-  const isSocialSource = result.sourceType === "social";
+  if (queryWords.length === 0 || maxDensity === 0) return 0;
 
-  // Get hours since publication
-  const hoursSincePub = getHoursSincePublication(result.publishedAt);
+  const titleLower = (result.title || "").toLowerCase();
+  const snippetLower = (result.snippet || "").toLowerCase();
 
-  // Calculate individual scores
-  const recencyScore = calculateRecencyScore(hoursSincePub, isSocialSource);
-  const engagementScore = calculateEngagementScore(result.engagement, isSocialSource);
+  let hits = 0;
+  for (const word of queryWords) {
+    const wordLower = word.toLowerCase();
+    // Title hit = 2 points, snippet hit = 1 point
+    if (titleLower.includes(wordLower)) hits += 2;
+    if (snippetLower.includes(wordLower)) hits += 1;
+  }
 
-  // Normalize relevance score (assume it's already 0-1 from API)
-  const relevanceScore = result.relevanceScore;
-
-  // Normalize engagement across all results
-  const engagements = allResults.map(r => calculateEngagementScore(r.engagement, r.sourceType === "social"));
-  const minEngagement = Math.min(...engagements);
-  const maxEngagement = Math.max(...engagements);
-  const normalizedEngagement = normalizeScore(engagementScore, minEngagement, maxEngagement);
-
-  // Calculate weighted final score
-  const finalScore =
-    relevanceScore * SCORING_WEIGHTS.relevance +
-    recencyScore * SCORING_WEIGHTS.recency +
-    normalizedEngagement * SCORING_WEIGHTS.engagement;
-
-  return Math.round(finalScore * 1000) / 1000; // Round to 3 decimal places
+  // Normalise against max density seen across all results
+  return Math.min(1, hits / maxDensity);
 }
 
 /**
- * Sort results by final score in descending order
+ * Calculate final score using a 4-signal formula:
+ *
+ *   score = (keywordDensity × 0.45)
+ *         + (normalisedRelevance × 0.25)
+ *         + (recency × 0.20)
+ *         + (normalisedEngagement × 0.10)
+ *
+ * Both relevance and engagement are normalised within their own source type
+ * to prevent Exa's high cosine similarity from always outranking HN/Reddit.
  */
-export function sortByScore(results: SearchResult[]): SearchResult[] {
-  // Calculate scores for all results
+export function calculateFinalScore(
+  result: SearchResult,
+  allResults: SearchResult[],
+  queryWords: string[],
+  maxKeywordDensity: number,
+  // Pre-computed per-source-type normalisation bounds
+  relevanceBounds: Map<string, { min: number; max: number }>,
+  engagementBounds: { min: number; max: number }
+): number {
+  const isSocialSource = result.sourceType === "social";
+
+  // 1. Keyword density (primary signal)
+  const kwDensity = calculateKeywordDensity(result, queryWords, maxKeywordDensity);
+
+  // 2. Normalised relevance — within source type to equalise Exa vs HN vs Reddit
+  const bounds = relevanceBounds.get(result.sourceType) ?? { min: 0, max: 1 };
+  const normRelevance = normalizeScore(result.relevanceScore, bounds.min, bounds.max);
+
+  // 3. Recency
+  const hoursSincePub = getHoursSincePublication(result.publishedAt);
+  const recencyScore = calculateRecencyScore(hoursSincePub, isSocialSource);
+
+  // 4. Engagement (normalised across all sources)
+  const engScore = calculateEngagementScore(result.engagement, isSocialSource);
+  const normEngagement = normalizeScore(engScore, engagementBounds.min, engagementBounds.max);
+
+  const finalScore =
+    kwDensity * SCORING_WEIGHTS.keywordDensity +
+    normRelevance * SCORING_WEIGHTS.relevance +
+    recencyScore * SCORING_WEIGHTS.recency +
+    normEngagement * SCORING_WEIGHTS.engagement;
+
+  return Math.round(finalScore * 1000) / 1000;
+}
+
+/**
+ * Sort results by final score in descending order.
+ * Accepts an optional query string to compute keyword density.
+ */
+export function sortByScore(results: SearchResult[], query?: string): SearchResult[] {
+  if (results.length === 0) return [];
+
+  // Parse query words (>= 2 chars, alphanumeric only)
+  const queryWords = (query || "")
+    .split(/\s+/)
+    .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
+    .filter(w => w.length >= 2);
+
+  // Pre-compute max keyword density across all results
+  const densities = results.map(r => {
+    let hits = 0;
+    const titleLower = (r.title || "").toLowerCase();
+    const snippetLower = (r.snippet || "").toLowerCase();
+    for (const word of queryWords) {
+      const wl = word.toLowerCase();
+      if (titleLower.includes(wl)) hits += 2;
+      if (snippetLower.includes(wl)) hits += 1;
+    }
+    return hits;
+  });
+  const maxDensity = Math.max(...densities, 1);
+
+  // Pre-compute relevance bounds per source type
+  const relevanceBounds = new Map<string, { min: number; max: number }>();
+  const sourceTypes = [...new Set(results.map(r => r.sourceType))];
+  for (const st of sourceTypes) {
+    const scores = results.filter(r => r.sourceType === st).map(r => r.relevanceScore);
+    relevanceBounds.set(st, {
+      min: Math.min(...scores),
+      max: Math.max(...scores),
+    });
+  }
+
+  // Pre-compute global engagement bounds
+  const engScores = results.map(r =>
+    calculateEngagementScore(r.engagement, r.sourceType === "social")
+  );
+  const engagementBounds = {
+    min: Math.min(...engScores),
+    max: Math.max(...engScores),
+  };
+
   const resultsWithScores = results.map(result => ({
     ...result,
-    calculatedScore: calculateFinalScore(result, results)
+    calculatedScore: calculateFinalScore(
+      result,
+      results,
+      queryWords,
+      maxDensity,
+      relevanceBounds,
+      engagementBounds
+    ),
   }));
 
-  // Sort by score descending
   resultsWithScores.sort((a, b) => b.calculatedScore - a.calculatedScore);
 
-  // Return with updated finalScore
   return resultsWithScores.map(({ calculatedScore, ...rest }) => ({
     ...rest,
-    finalScore: calculatedScore
+    finalScore: calculatedScore,
   }));
 }
 

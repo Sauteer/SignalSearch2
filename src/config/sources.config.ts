@@ -66,11 +66,12 @@ export const SOURCE_HANDLERS: Record<SourceHandler, SourceConfig> = {
   },
 };
 
-// Scoring weights
+// Scoring weights for the 4-signal ranking algorithm
 export const SCORING_WEIGHTS = {
-  relevance: 0.6, // W_rel — query relevance is the primary signal
-  recency: 0.25, // W_rec
-  engagement: 0.15, // W_eng
+  keywordDensity: 0.45, // How many query words appear in title+snippet (primary signal)
+  relevance: 0.25,     // Source API relevance score, normalised per source type
+  recency: 0.20,       // Exponential decay from publication date
+  engagement: 0.10,    // Upvotes/points/likes, log-scaled and normalised
 } as const;
 
 // Recency decay lambda (lower = slower decay so old relevant content still surfaces)
