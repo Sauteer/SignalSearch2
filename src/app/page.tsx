@@ -147,7 +147,10 @@ export default function HomePage() {
       <div className={cn("w-full flex flex-col bg-background bg-grid relative text-foreground", hasSearched ? "h-screen overflow-hidden" : "h-[100dvh] overflow-x-hidden overflow-y-auto custom-scrollbar")}>
         <div className="absolute inset-0 bg-radial-glow pointer-events-none" />
 
-        <div className="absolute top-6 right-6 z-50">
+        <div className="absolute top-6 right-6 z-50 flex items-center gap-4">
+          <span className="text-[10px] font-mono text-muted-foreground px-2 py-1 rounded-full bg-muted/50 border border-border/50">
+            v0.1.1
+          </span>
           <UserMenu />
         </div>
 
@@ -158,9 +161,6 @@ export default function HomePage() {
               <Zap className="w-5 h-5 text-primary" />
               <span className="font-semibold text-sm tracking-wider text-gradient-primary">
                 NEXUS
-              </span>
-              <span className="text-[10px] font-mono text-muted-foreground ml-1 mb-2 px-1.5 py-0.5 rounded-full bg-muted/50 border border-border/50">
-                v0.1.1
               </span>
             </div>
           </header>
