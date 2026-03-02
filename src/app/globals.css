@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ── Dark Theme (default) ─────────────────────────────────────── */
 :root,
 .dark {
   --background: 220 20% 6%;
@@ -54,6 +55,65 @@
 
   --font-sans: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* Keyword highlighting in dark mode */
+  --highlight-bg: hsl(175 95% 50% / 0.25);
+  --highlight-text: hsl(175 95% 65%);
+  --highlight-border: hsl(175 95% 50% / 0.5);
+}
+
+/* ── Light Theme ─────────────────────────────────────────────── */
+.light {
+  --background: 210 20% 97%;
+  --foreground: 220 25% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 25% 12%;
+
+  --primary: 175 80% 35%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 15% 92%;
+  --secondary-foreground: 220 20% 25%;
+
+  --muted: 210 15% 94%;
+  --muted-foreground: 220 10% 45%;
+
+  --accent: 260 70% 55%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 210 15% 85%;
+  --input: 210 15% 90%;
+  --ring: 175 80% 35%;
+
+  --radius: 0.75rem;
+
+  --glow-primary: 0 0 16px hsl(175 80% 35% / 0.2), 0 0 40px hsl(175 80% 35% / 0.08);
+  --glow-primary-strong: 0 0 24px hsl(175 80% 35% / 0.35), 0 0 60px hsl(175 80% 35% / 0.15);
+  --glow-accent: 0 0 16px hsl(260 70% 55% / 0.2), 0 0 40px hsl(260 70% 55% / 0.08);
+
+  --sidebar-background: 210 20% 95%;
+  --sidebar-foreground: 220 20% 25%;
+  --sidebar-primary: 175 80% 35%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 15% 90%;
+  --sidebar-accent-foreground: 220 20% 25%;
+  --sidebar-border: 210 15% 85%;
+  --sidebar-ring: 175 80% 35%;
+
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Keyword highlighting in light mode */
+  --highlight-bg: hsl(175 80% 35% / 0.15);
+  --highlight-text: hsl(175 80% 28%);
+  --highlight-border: hsl(175 80% 35% / 0.4);
 }
 
 @theme inline {
@@ -133,12 +193,6 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-  }
-}
-
 * {
   border-color: hsl(var(--border));
 }
@@ -149,11 +203,23 @@ body {
   font-family: var(--font-sans);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.3s ease, color 0.2s ease;
 }
 
 code,
 .font-mono {
   font-family: var(--font-mono);
+}
+
+/* ── Keyword Highlight Mark ──────────────────────────────────── */
+mark.kw-highlight {
+  background: var(--highlight-bg);
+  color: var(--highlight-text);
+  border-radius: 3px;
+  padding: 0 3px;
+  font-weight: 700;
+  font-style: normal;
+  border-bottom: 1.5px solid var(--highlight-border);
 }
 
 /* Custom Utilities from Insight Engine */
@@ -171,7 +237,7 @@ code,
   }
 
   .text-gradient-primary {
-    background-image: linear-gradient(135deg, hsl(175 95% 50%), hsl(200 90% 60%));
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(200 90% 60%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -186,17 +252,35 @@ code,
 
   .bg-grid {
     background-image:
-      linear-gradient(hsl(220 15% 18% / 0.5) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(220 15% 18% / 0.5) 1px, transparent 1px);
+      linear-gradient(hsl(var(--border) / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.5) 1px, transparent 1px);
     background-size: 40px 40px;
   }
 
   .bg-radial-glow {
-    background: radial-gradient(ellipse at center top, hsl(175 95% 50% / 0.08) 0%, transparent 60%);
+    background: radial-gradient(ellipse at center top, hsl(var(--primary) / 0.08) 0%, transparent 60%);
   }
 }
 
-/* Custom scrollbar for dark mode */
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

@@ -33,8 +33,9 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
   const Icon = SourceIcons[result.sourceType] || Globe
 
   const highlightSnippet = (text: string, highlight?: string): React.ReactNode => {
-    if (!text) return ""
+    if (!text) return <span className="text-muted-foreground italic text-xs">No preview available.</span>
     const targetWords = highlight?.trim()
+    // Only highlight when we actually have a search query — don't fall back to title
     if (!targetWords) return <>{text}</>
 
     // Escape regex special chars and extract words >= 2 chars
@@ -42,7 +43,7 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
       .split(/\s+/)
       .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
       .filter(w => w.length >= 2)
-      .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // escape regex special chars
+      .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
 
     if (words.length === 0) return <>{text}</>
 
@@ -55,10 +56,9 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
           .filter(part => part !== undefined && part !== null)
           .map((part, i) => {
             if (!part) return null
-            // Odd-indexed parts are capture group matches (the highlighted words)
             if (i % 2 !== 0) {
               return (
-                <mark key={i} className="bg-primary/20 text-primary rounded px-0.5 font-bold not-italic">
+                <mark key={i} className="kw-highlight">
                   {part}
                 </mark>
               )
@@ -141,7 +141,7 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
             </h3>
 
             <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-              {highlightSnippet(result.snippet, searchQuery || result.title)}
+              {highlightSnippet(result.snippet, searchQuery)}
             </p>
           </div>
         </div>
@@ -190,7 +190,9 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
           <div className="mt-4 pt-4 border-t border-border/50 animate-fade-in bg-muted/10 -mx-5 -mb-5 p-5 rounded-b-xl overflow-hidden">
             <h4 className="text-sm font-bold text-foreground mb-2">Extended Context</h4>
             <div className="text-sm text-secondary-foreground leading-relaxed font-mono whitespace-pre-wrap max-h-[400px] overflow-y-auto custom-scrollbar pr-3">
-              {result.rawContent ? highlightSnippet(result.rawContent, searchQuery || result.title) : highlightSnippet(result.snippet, searchQuery || result.title)}
+              {result.rawContent
+                ? highlightSnippet(result.rawContent, searchQuery)
+                : highlightSnippet(result.snippet, searchQuery)}
             </div>
           </div>
         )}

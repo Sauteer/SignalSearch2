@@ -10,6 +10,7 @@ import { AdvancedFilters } from "@/components/AdvancedFilters"
 import { SearchResult, TimeRangeValue, SearchQuery } from "@/lib/types"
 import { SEARCH_SOURCES } from "@/config/sources.config"
 import { UserMenu } from "@/components/UserMenu"
+import { ThemeToggle } from "@/components/ThemeToggle"
 import { Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CustomDateRange } from "@/lib/types"
@@ -147,10 +148,11 @@ export default function HomePage() {
       <div className={cn("w-full flex flex-col bg-background bg-grid relative text-foreground", hasSearched ? "h-screen overflow-hidden" : "h-[100dvh] overflow-x-hidden overflow-y-auto custom-scrollbar")}>
         <div className="absolute inset-0 bg-radial-glow pointer-events-none" />
 
-        <div className="absolute top-6 right-6 z-50 flex items-center gap-4">
+        <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
           <span className="text-[10px] font-mono text-muted-foreground px-2 py-1 rounded-full bg-muted/50 border border-border/50">
             v0.1.1
           </span>
+          <ThemeToggle />
           <UserMenu />
         </div>
 
