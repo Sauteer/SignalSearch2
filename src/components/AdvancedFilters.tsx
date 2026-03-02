@@ -158,7 +158,7 @@ export function AdvancedFilters({
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 pt-12 border-t-2 border-border/40">
+                    <div className="flex flex-col gap-12 pt-12 border-t-2 border-border/40">
                         {/* Dual-Thumb Time Range Selector */}
                         <div className="space-y-8">
                             <div className="flex flex-col gap-2">
@@ -199,7 +199,7 @@ export function AdvancedFilters({
                                     <Slider.Root
                                         className="relative flex items-center select-none touch-none w-full h-8"
                                         value={customDateRange.value}
-                                        max={customDateRange.unit === "days" ? 30 : customDateRange.unit === "weeks" ? 52 : 24}
+                                        max={customDateRange.unit === "days" ? 1095 : customDateRange.unit === "weeks" ? 156 : 36}
                                         step={1}
                                         minStepsBetweenThumbs={1}
                                         onValueChange={(val) => onCustomDateRangeChange?.({ ...customDateRange, value: val as [number, number] })}
@@ -218,7 +218,7 @@ export function AdvancedFilters({
                                     </Slider.Root>
                                     <div className="flex justify-between mt-8 px-1 text-xs sm:text-sm text-foreground/50 font-bold uppercase tracking-wider">
                                         <span>Now</span>
-                                        <span>Max ({customDateRange.unit === "days" ? 30 : customDateRange.unit === "weeks" ? 52 : 24})</span>
+                                        <span>Max ({customDateRange.unit === "days" ? 1095 : customDateRange.unit === "weeks" ? 156 : 36} {customDateRange.unit})</span>
                                     </div>
                                 </div>
                             </div>

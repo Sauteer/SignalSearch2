@@ -166,7 +166,7 @@ export default function HomePage() {
           <div
             className={cn(
               "transition-all duration-700 ease-out w-full mx-auto px-4 flex flex-col z-40",
-              hasSearched ? "pt-4 pb-6 max-w-4xl" : "pt-[18vh] pb-12 max-w-6xl"
+              hasSearched ? "pt-4 pb-6 max-w-6xl" : "pt-[18vh] pb-12 max-w-7xl"
             )}
           >
             <div className={cn("text-center mb-8 transition-all duration-500", hasSearched && "hidden md:opacity-0 md:h-0 overflow-hidden mb-0")}>
@@ -179,9 +179,11 @@ export default function HomePage() {
             </div>
 
             <div className="w-full relative group">
-              <SearchBar onSearch={handleSearch} isLoading={isLoading} />
-              <div className="mt-5 flex justify-center w-full">
-                <SourceFilter filters={filters} onFilterChange={setFilters} />
+              <div className="max-w-4xl mx-auto w-full">
+                <SearchBar onSearch={handleSearch} isLoading={isLoading} />
+                <div className="mt-5 flex justify-center w-full">
+                  <SourceFilter filters={filters} onFilterChange={setFilters} />
+                </div>
               </div>
               <div className={cn("mt-4 text-xs text-muted-foreground transition-all duration-500 w-full mx-auto relative z-50",
                 hasSearched ? "opacity-100" : "opacity-60 hover:opacity-100"
