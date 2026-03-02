@@ -159,6 +159,9 @@ export default function HomePage() {
               <span className="font-semibold text-sm tracking-wider text-gradient-primary">
                 NEXUS
               </span>
+              <span className="text-[10px] font-mono text-muted-foreground ml-1 mb-2 px-1.5 py-0.5 rounded-full bg-muted/50 border border-border/50">
+                v0.1.1
+              </span>
             </div>
           </header>
 
