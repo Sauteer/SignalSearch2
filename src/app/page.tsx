@@ -150,7 +150,7 @@ export default function HomePage() {
 
         <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
           <span className="text-[10px] font-mono text-muted-foreground px-2 py-1 rounded-full bg-muted/50 border border-border/50">
-            v0.1.4
+            v0.1.5
           </span>
           <ThemeToggle />
           <UserMenu />

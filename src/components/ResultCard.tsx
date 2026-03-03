@@ -47,26 +47,31 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
 
     if (words.length === 0) return <>{text}</>
 
-    const regex = new RegExp(`\\b(${words.join('|')})\\b`, 'gi')
-    const parts = text.split(regex)
-
-    return (
-      <>
-        {parts
-          .filter(part => part !== undefined && part !== null)
-          .map((part, i) => {
-            if (!part) return null
-            if (i % 2 !== 0) {
-              return (
-                <mark key={i} className="kw-highlight">
-                  {part}
-                </mark>
-              )
-            }
-            return part.length > 0 ? <React.Fragment key={i}>{part}</React.Fragment> : null
-          })}
-      </>
+    // Use lookahead/lookbehind instead of \b so acronyms like "AI", "LLM"
+    // match correctly even when adjacent to punctuation in transcript text
+    const regex = new RegExp(
+      `(?<![a-zA-Z0-9])(${words.join('|')})(?![a-zA-Z0-9])`,
+      'gi'
     )
+
+    // Build parts using matchAll so there are no capture-group parity issues
+    const nodes: React.ReactNode[] = []
+    let lastIndex = 0
+    for (const match of text.matchAll(regex)) {
+      const start = match.index ?? 0
+      if (start > lastIndex) {
+        nodes.push(<React.Fragment key={lastIndex}>{text.slice(lastIndex, start)}</React.Fragment>)
+      }
+      nodes.push(
+        <mark key={start} className="kw-highlight">{match[1] ?? match[0]}</mark>
+      )
+      lastIndex = start + match[0].length
+    }
+    if (lastIndex < text.length) {
+      nodes.push(<React.Fragment key={lastIndex}>{text.slice(lastIndex)}</React.Fragment>)
+    }
+
+    return <>{nodes}</>
   }
 
   const handleSave = async (e: React.MouseEvent) => {
@@ -137,7 +142,7 @@ export function ResultCard({ result, index, className, searchQuery }: ResultCard
             </div>
 
             <h3 className="text-lg font-bold text-foreground mb-3 line-clamp-2 group-hover:text-primary transition-colors pr-8">
-              {result.title}
+              {highlightSnippet(result.title, searchQuery)}
             </h3>
 
             <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
